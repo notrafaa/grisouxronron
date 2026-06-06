@@ -30,7 +30,19 @@ import {
   supabase,
 } from "@/lib/supabase";
 
-type UpgradeId = "paw" | "cushion" | "gloss" | "snack";
+type UpgradeId =
+  | "paw"
+  | "cushion"
+  | "gloss"
+  | "snack"
+  | "laser"
+  | "yarn"
+  | "nap"
+  | "chef"
+  | "portal"
+  | "crown"
+  | "factory"
+  | "constellation";
 type AuthMode = "login" | "create";
 
 type Upgrade = {
@@ -119,6 +131,86 @@ const upgrades: Upgrade[] = [
     tint: "#ff8c61",
     effect: (level) => `+${(level + 1) * 8}%`,
   },
+  {
+    id: "laser",
+    name: "Laser hypnotique",
+    icon: Zap,
+    description: "Grosses pointes de puissance au clic.",
+    baseCost: 1400,
+    growth: 1.5,
+    tint: "#ff5f3d",
+    effect: (level) => `+${(level + 1) * 5}% clic`,
+  },
+  {
+    id: "yarn",
+    name: "Pelote quantique",
+    icon: Sparkles,
+    description: "Ameliore la production automatique.",
+    baseCost: 3200,
+    growth: 1.55,
+    tint: "#65b8ff",
+    effect: (level) => `+${(level + 1) * 3}/s`,
+  },
+  {
+    id: "nap",
+    name: "Sieste royale",
+    icon: Cat,
+    description: "Bonus global doux mais infini.",
+    baseCost: 7200,
+    growth: 1.6,
+    tint: "#c9f28d",
+    effect: (level) => `x${(1 + (level + 1) * 0.04).toFixed(2)}`,
+  },
+  {
+    id: "chef",
+    name: "Chef croquette",
+    icon: Coins,
+    description: "Multiplie les croquettes gagnees.",
+    baseCost: 18000,
+    growth: 1.66,
+    tint: "#ffd166",
+    effect: (level) => `x${(1 + (level + 1) * 0.06).toFixed(2)}`,
+  },
+  {
+    id: "portal",
+    name: "Portail miaou",
+    icon: Sparkles,
+    description: "La ferme attire des croquettes d'ailleurs.",
+    baseCost: 52000,
+    growth: 1.72,
+    tint: "#b69cff",
+    effect: (level) => `+${(level + 1) * 18}/s`,
+  },
+  {
+    id: "crown",
+    name: "Couronne du goat",
+    icon: Trophy,
+    description: "Booste les niveaux de chats.",
+    baseCost: 140000,
+    growth: 1.78,
+    tint: "#ffcf5a",
+    effect: (level) => `+${(level + 1) * 7}% chats`,
+  },
+  {
+    id: "factory",
+    name: "Usine a ronrons",
+    icon: Gem,
+    description: "Production passive massive.",
+    baseCost: 400000,
+    growth: 1.84,
+    tint: "#8df0bf",
+    effect: (level) => `+${(level + 1) * 60}/s`,
+  },
+  {
+    id: "constellation",
+    name: "Constellation squeechie",
+    icon: Flame,
+    description: "Bonus final qui scale pour toujours.",
+    baseCost: 1200000,
+    growth: 1.92,
+    tint: "#ff7fbf",
+    effect: (level) => `x${(1 + (level + 1) * 0.1).toFixed(2)}`,
+  },
 ];
 
 const emptyUpgrades: Record<UpgradeId, number> = {
@@ -126,6 +218,19 @@ const emptyUpgrades: Record<UpgradeId, number> = {
   cushion: 0,
   gloss: 0,
   snack: 0,
+  laser: 0,
+  yarn: 0,
+  nap: 0,
+  chef: 0,
+  portal: 0,
+  crown: 0,
+  factory: 0,
+  constellation: 0,
+};
+
+const emptyCatLevels: Record<CatId, number> = {
+  grisou: 1,
+  ronron: 1,
 };
 
 const demoKey = "squeechie-clicker-demo-profile";
@@ -145,6 +250,9 @@ function freshProfile(username: string, id = "demo-user"): GameProfile {
     auto_rate: 0,
     multiplier: 1,
     upgrades: { ...emptyUpgrades },
+    rebirths: 0,
+    lifetime_treats: 0,
+    cat_levels: { ...emptyCatLevels },
   };
 }
 
@@ -162,8 +270,17 @@ function upgradeCost(upgrade: Upgrade, level: number) {
   return Math.floor(upgrade.baseCost * Math.pow(upgrade.growth, level));
 }
 
+function catLevelCost(level: number, rebirths: number) {
+  return Math.floor(450 * Math.pow(1.42, level - 1) * (1 + rebirths * 0.12));
+}
+
+function rebirthCost(rebirths: number) {
+  return Math.floor(100000 * Math.pow(3.2, rebirths));
+}
+
 function normalizeProfile(profile: GameProfile): GameProfile {
   const levels = { ...emptyUpgrades, ...(profile.upgrades ?? {}) };
+  const catLevels = { ...emptyCatLevels, ...(profile.cat_levels ?? {}) };
   return {
     ...profile,
     selected_cat: profile.selected_cat ?? "grisou",
@@ -173,6 +290,9 @@ function normalizeProfile(profile: GameProfile): GameProfile {
     auto_rate: Number(profile.auto_rate ?? 0),
     multiplier: Number(profile.multiplier ?? 1),
     upgrades: levels,
+    rebirths: Number(profile.rebirths ?? 0),
+    lifetime_treats: Number(profile.lifetime_treats ?? profile.treats ?? 0),
+    cat_levels: catLevels,
   };
 }
 
@@ -198,8 +318,26 @@ export default function ClickerGame() {
   const lastCursorSent = useRef(0);
 
   const currentCat = profile ? cats[profile.selected_cat] : cats.grisou;
-  const treatsPerClick = profile ? profile.click_power * profile.multiplier : 1;
-  const passiveGain = profile ? profile.auto_rate * profile.multiplier : 0;
+  const activeCatLevel = profile ? profile.cat_levels[profile.selected_cat] ?? 1 : 1;
+  const rebirthMultiplier = profile ? 1 + profile.rebirths * 0.35 : 1;
+  const catMultiplier = profile ? 1 + (activeCatLevel - 1) * 0.12 + (profile.upgrades.crown ?? 0) * 0.07 : 1;
+  const globalMultiplier = profile
+    ? (1 + (profile.upgrades.gloss ?? 0) * 0.15)
+      * (1 + (profile.upgrades.nap ?? 0) * 0.04)
+      * (1 + (profile.upgrades.chef ?? 0) * 0.06)
+      * (1 + (profile.upgrades.constellation ?? 0) * 0.1)
+      * rebirthMultiplier
+      * catMultiplier
+    : 1;
+  const treatsPerClick = profile
+    ? (1 + (profile.upgrades.paw ?? 0) + (profile.upgrades.laser ?? 0) * 0.05 * (profile.upgrades.paw + 1)) * globalMultiplier
+    : 1;
+  const passiveGain = profile
+    ? ((profile.upgrades.cushion ?? 0) * 0.8
+      + (profile.upgrades.yarn ?? 0) * 3
+      + (profile.upgrades.portal ?? 0) * 18
+      + (profile.upgrades.factory ?? 0) * 60) * globalMultiplier
+    : 0;
   const totalUpgradeLevels = profile
     ? Object.values({ ...emptyUpgrades, ...profile.upgrades }).reduce((sum, value) => sum + value, 0)
     : 0;
@@ -233,11 +371,43 @@ export default function ClickerGame() {
     [soundOn],
   );
 
+  const playMeow = useCallback(() => {
+    if (!soundOn || typeof window === "undefined") return;
+    const ctx = audio.current ?? new AudioContext();
+    audio.current = ctx;
+    const now = ctx.currentTime;
+    const gain = ctx.createGain();
+    const osc = ctx.createOscillator();
+    const wobble = ctx.createOscillator();
+    const wobbleGain = ctx.createGain();
+
+    osc.type = "sine";
+    wobble.type = "triangle";
+    osc.frequency.setValueAtTime(720, now);
+    osc.frequency.exponentialRampToValueAtTime(430, now + 0.11);
+    osc.frequency.exponentialRampToValueAtTime(610, now + 0.22);
+    wobble.frequency.setValueAtTime(18, now);
+    wobbleGain.gain.setValueAtTime(38, now);
+    wobble.connect(wobbleGain);
+    wobbleGain.connect(osc.frequency);
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(0.085, now + 0.025);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    wobble.start(now);
+    osc.start(now);
+    wobble.stop(now + 0.3);
+    osc.stop(now + 0.3);
+  }, [soundOn]);
+
   const loadLeaderboard = useCallback(async () => {
     if (!supabase) return;
     const { data } = await supabase
       .from("profiles")
       .select("*")
+      .order("rebirths", { ascending: false })
+      .order("lifetime_treats", { ascending: false })
       .order("treats", { ascending: false })
       .limit(8);
     if (data) setLeaderboard(data.map((item) => normalizeProfile(item as GameProfile)));
@@ -370,6 +540,7 @@ export default function ClickerGame() {
       updateProfile((current) => ({
         ...current,
         treats: current.treats + passiveGain,
+        lifetime_treats: current.lifetime_treats + passiveGain,
       }));
     }, 1000);
     return () => clearInterval(timer);
@@ -534,9 +705,10 @@ export default function ClickerGame() {
     updateProfile((current) => ({
       ...current,
       treats: current.treats + value,
+      lifetime_treats: current.lifetime_treats + value,
       total_clicks: current.total_clicks + 1,
     }));
-    playTone("click");
+    playMeow();
   }
 
   function buyUpgrade(upgrade: Upgrade) {
@@ -555,9 +727,9 @@ export default function ClickerGame() {
         ...current,
         treats: current.treats - cost,
         upgrades: levels,
-        click_power: 1 + levels.paw,
-        auto_rate: levels.cushion * 0.8,
-        multiplier: 1 + levels.gloss * 0.15,
+        click_power: 1 + levels.paw + levels.laser * 0.25,
+        auto_rate: levels.cushion * 0.8 + levels.yarn * 3 + levels.portal * 18 + levels.factory * 60,
+        multiplier: 1 + levels.gloss * 0.15 + levels.nap * 0.04 + levels.chef * 0.06 + levels.constellation * 0.1,
       };
     });
     setMessage(`${upgrade.name} niveau ${level + 1}.`);
@@ -567,6 +739,48 @@ export default function ClickerGame() {
   function switchCat(catId: CatId) {
     updateProfile((current) => ({ ...current, selected_cat: catId }));
     playTone("buy");
+  }
+
+  function levelUpCurrentCat() {
+    if (!profile) return;
+    const currentLevel = profile.cat_levels[profile.selected_cat] ?? 1;
+    const cost = catLevelCost(currentLevel, profile.rebirths);
+    if (profile.treats < cost) {
+      setMessage("Pas assez de croquettes pour level up ce chat.");
+      playTone("error");
+      return;
+    }
+    updateProfile((current) => ({
+      ...current,
+      treats: current.treats - cost,
+      cat_levels: {
+        ...current.cat_levels,
+        [current.selected_cat]: (current.cat_levels[current.selected_cat] ?? 1) + 1,
+      },
+    }));
+    setMessage(`${cats[profile.selected_cat].name} gagne un niveau.`);
+    playTone("buy");
+  }
+
+  function rebirth() {
+    if (!profile) return;
+    const cost = rebirthCost(profile.rebirths);
+    if (profile.treats < cost) {
+      setMessage(`Rebirth disponible a ${numberFormat.format(cost)} croquettes.`);
+      playTone("error");
+      return;
+    }
+    updateProfile((current) => ({
+      ...current,
+      treats: 0,
+      click_power: 1,
+      auto_rate: 0,
+      multiplier: 1,
+      rebirths: current.rebirths + 1,
+      upgrades: { ...emptyUpgrades },
+    }));
+    setMessage(`Rebirth +1. Multiplicateur permanent x${(1 + (profile.rebirths + 1) * 0.35).toFixed(2)}.`);
+    playTone("save");
   }
 
   async function signOut() {
@@ -782,6 +996,8 @@ export default function ClickerGame() {
               <StatRow icon={Sparkles} label="Auto" value={`${passiveGain.toFixed(1)}/s`} />
               <StatRow icon={MousePointer2} label="Clics" value={numberFormat.format(profile.total_clicks)} />
               <StatRow icon={Gem} label="Niveaux" value={numberFormat.format(totalUpgradeLevels)} />
+              <StatRow icon={Cat} label={`${currentCat.name} lvl`} value={numberFormat.format(activeCatLevel)} />
+              <StatRow icon={Flame} label="Rebirths" value={numberFormat.format(profile.rebirths)} />
             </div>
             <div className="mt-5 flex gap-2">
               <button title="Son" onClick={() => setSoundOn((value) => !value)} className="icon-button bg-white/10">
@@ -865,6 +1081,40 @@ export default function ClickerGame() {
               <Coins className="h-6 w-6 text-[#ff744d]" />
             </div>
             <div className="mt-4 grid gap-3">
+              <button
+                onClick={levelUpCurrentCat}
+                className="group rounded-[24px] border border-[#65b8ff] bg-[#65b8ff]/14 p-3 text-left shadow-[0_0_30px_rgba(101,184,255,.14)] transition active:translate-y-1"
+              >
+                <div className="grid grid-cols-[48px_1fr_auto] items-center gap-3">
+                  <span className="grid h-12 w-12 place-items-center rounded-2xl bg-[#65b8ff] text-[#071018]">
+                    <Cat className="h-6 w-6" />
+                  </span>
+                  <span>
+                    <span className="block text-base font-black">Level up {currentCat.name}</span>
+                    <span className="block text-xs font-bold text-white/58">lvl {activeCatLevel} - +12% avec ce chat</span>
+                  </span>
+                  <span className="rounded-2xl bg-black/54 px-3 py-2 text-sm font-black text-white">
+                    {numberFormat.format(catLevelCost(activeCatLevel, profile.rebirths))}
+                  </span>
+                </div>
+              </button>
+              <button
+                onClick={rebirth}
+                className="group rounded-[24px] border border-[#ffd166] bg-[#ffd166]/14 p-3 text-left shadow-[0_0_30px_rgba(255,209,102,.14)] transition active:translate-y-1"
+              >
+                <div className="grid grid-cols-[48px_1fr_auto] items-center gap-3">
+                  <span className="grid h-12 w-12 place-items-center rounded-2xl bg-[#ffd166] text-[#071018]">
+                    <Flame className="h-6 w-6" />
+                  </span>
+                  <span>
+                    <span className="block text-base font-black">Rebirth</span>
+                    <span className="block text-xs font-bold text-white/58">reset upgrades - +35% permanent</span>
+                  </span>
+                  <span className="rounded-2xl bg-black/54 px-3 py-2 text-sm font-black text-white">
+                    {numberFormat.format(rebirthCost(profile.rebirths))}
+                  </span>
+                </div>
+              </button>
               {upgrades.map((upgrade) => {
                 const level = profile.upgrades[upgrade.id] ?? 0;
                 const cost = upgradeCost(upgrade, level);
@@ -910,9 +1160,16 @@ export default function ClickerGame() {
             </div>
             <div className="mt-4 grid gap-2">
               {(leaderboard.length ? leaderboard : [profile]).map((item, index) => (
-                <div key={item.id} className="flex items-center justify-between gap-3 rounded-2xl bg-white/8 px-3 py-3 text-sm font-black">
-                  <span className="truncate">{index + 1}. {item.username}</span>
-                  <span className="rounded-full bg-white/12 px-3 py-1">{numberFormat.format(item.treats)}</span>
+                <div key={item.id} className="rounded-2xl bg-white/8 px-3 py-3 text-sm font-black">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="truncate">{index + 1}. {item.username}</span>
+                    <span className="rounded-full bg-white/12 px-3 py-1">{numberFormat.format(item.treats)}</span>
+                  </div>
+                  <div className="mt-2 grid grid-cols-3 gap-2 text-[11px] text-white/58">
+                    <span>RB {numberFormat.format(item.rebirths)}</span>
+                    <span>Clics {numberFormat.format(item.total_clicks)}</span>
+                    <span>Vie {numberFormat.format(item.lifetime_treats)}</span>
+                  </div>
                 </div>
               ))}
             </div>

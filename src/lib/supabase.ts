@@ -12,6 +12,9 @@ export type GameProfile = {
   auto_rate: number;
   multiplier: number;
   upgrades: Record<string, number>;
+  rebirths: number;
+  lifetime_treats: number;
+  cat_levels: Record<CatId, number>;
   updated_at?: string;
 };
 

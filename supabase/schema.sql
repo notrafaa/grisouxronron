@@ -9,13 +9,33 @@ create table if not exists public.profiles (
   click_power double precision not null default 1 check (click_power >= 1),
   auto_rate double precision not null default 0 check (auto_rate >= 0),
   multiplier double precision not null default 1 check (multiplier >= 1),
-  upgrades jsonb not null default '{"paw":0,"cushion":0,"gloss":0,"snack":0}'::jsonb,
+  upgrades jsonb not null default '{"paw":0,"cushion":0,"gloss":0,"snack":0,"laser":0,"yarn":0,"nap":0,"chef":0,"portal":0,"crown":0,"factory":0,"constellation":0}'::jsonb,
+  rebirths integer not null default 0 check (rebirths >= 0),
+  lifetime_treats double precision not null default 0 check (lifetime_treats >= 0),
+  cat_levels jsonb not null default '{"grisou":1,"ronron":1}'::jsonb,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
 
 create unique index if not exists profiles_username_unique_lower
   on public.profiles (lower(username));
+
+alter table public.profiles
+  add column if not exists rebirths integer not null default 0 check (rebirths >= 0);
+
+alter table public.profiles
+  add column if not exists lifetime_treats double precision not null default 0 check (lifetime_treats >= 0);
+
+alter table public.profiles
+  add column if not exists cat_levels jsonb not null default '{"grisou":1,"ronron":1}'::jsonb;
+
+update public.profiles
+set upgrades = '{"paw":0,"cushion":0,"gloss":0,"snack":0,"laser":0,"yarn":0,"nap":0,"chef":0,"portal":0,"crown":0,"factory":0,"constellation":0}'::jsonb || upgrades
+where upgrades is not null;
+
+update public.profiles
+set lifetime_treats = greatest(lifetime_treats, treats)
+where lifetime_treats < treats;
 
 alter table public.profiles enable row level security;
 

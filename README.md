@@ -34,6 +34,15 @@ Attention: `NEXT_PUBLIC_SUPABASE_URL` ne doit jamais etre l'URL Vercel. Si tu vo
 
 Le joueur cree un compte avec pseudo + mot de passe, puis peut se reconnecter avec les memes infos pour retrouver sa sauvegarde. Le pseudo est unique grace a un index SQL sur `lower(username)`, donc `Milo` et `milo` ne peuvent pas exister en double.
 
+Le clicker sauvegarde aussi:
+
+- les rebirths
+- les croquettes de vie entiere
+- les niveaux de Grisou et Ronron
+- toutes les upgrades de boutique
+
+Si tu ajoutes cette version sur une base deja existante, reexecute `supabase/schema.sql` pour ajouter les nouvelles colonnes.
+
 Pour le realtime:
 
 - Dans Supabase, verifie que Realtime est active pour `duel_lobbies`, `duel_players` et `duel_events`.
