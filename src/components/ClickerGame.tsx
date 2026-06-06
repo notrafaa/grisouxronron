@@ -950,137 +950,146 @@ export default function ClickerGame() {
           {cursor.username}
         </div>
       ))}
-      <div className="relative z-10 mx-auto grid min-h-screen w-full max-w-[1500px] gap-4 px-4 py-4 xl:grid-cols-[310px_minmax(520px,1fr)_380px]">
-        <aside className="order-2 flex flex-col gap-4 xl:order-1">
-          <Panel>
-            <div className="flex items-center justify-between gap-3">
-              <div className="min-w-0">
-                <p className="eyebrow">Joueur</p>
-                <h2 className="truncate text-3xl font-black">{profile.username}</h2>
-              </div>
-              <button title="Quitter" onClick={signOut} className="icon-button bg-white/10">
-                <LogOut className="h-5 w-5" />
-              </button>
+      <div className="relative z-10 mx-auto grid min-h-screen w-full max-w-[1320px] gap-4 px-4 py-4 lg:grid-cols-[minmax(0,1fr)_370px]">
+        <section className="grid min-h-0 gap-4 lg:grid-rows-[auto_minmax(0,1fr)_auto]">
+          <header className="glass-panel flex flex-wrap items-center justify-between gap-3 rounded-[30px] p-4">
+            <div className="min-w-0">
+              <p className="eyebrow">Joueur</p>
+              <h2 className="truncate text-2xl font-black sm:text-3xl">{profile.username}</h2>
             </div>
-            <div className="mt-4 grid grid-cols-2 gap-2">
-              <Link className="neo-button rounded-2xl px-3 py-2 text-center text-sm font-black" href="/clicker">
-                Clicker
-              </Link>
-              <Link className="danger-button rounded-2xl px-3 py-2 text-center text-sm font-black" href="/duel">
-                Duel
-              </Link>
-            </div>
-            <div className="mt-5 grid grid-cols-2 gap-3">
-              {Object.entries(cats).map(([id, cat]) => (
-                <button
-                  key={id}
-                  title={`Choisir ${cat.name}`}
-                  onClick={() => switchCat(id as CatId)}
-                  className={`rounded-[22px] border p-2 text-left font-black transition ${
-                    profile.selected_cat === id
-                      ? "border-[#8df0bf] bg-[#8df0bf]/22 shadow-[0_0_30px_rgba(141,240,191,.2)]"
-                      : "border-white/10 bg-white/8 hover:-translate-y-0.5"
-                  }`}
-                >
-                  <Image src={cat.src} alt={cat.name} width={120} height={120} className="aspect-square w-full rounded-[17px] object-cover" />
-                  <span className="mt-2 block px-1 text-sm">{cat.name}</span>
-                </button>
-              ))}
-            </div>
-          </Panel>
-
-          <Panel>
-            <p className="eyebrow">Stats</p>
-            <div className="mt-4 grid gap-3">
-              <StatRow icon={Hand} label="Par clic" value={numberFormat.format(treatsPerClick)} />
-              <StatRow icon={Sparkles} label="Auto" value={`${passiveGain.toFixed(1)}/s`} />
-              <StatRow icon={MousePointer2} label="Clics" value={numberFormat.format(profile.total_clicks)} />
-              <StatRow icon={Gem} label="Niveaux" value={numberFormat.format(totalUpgradeLevels)} />
-              <StatRow icon={Cat} label={`${currentCat.name} lvl`} value={numberFormat.format(activeCatLevel)} />
-              <StatRow icon={Flame} label="Rebirths" value={numberFormat.format(profile.rebirths)} />
-            </div>
-            <div className="mt-5 flex gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <Link className="neo-button rounded-2xl px-4 py-2 text-sm font-black" href="/clicker">Clicker</Link>
+              <Link className="danger-button rounded-2xl px-4 py-2 text-sm font-black" href="/duel">Duel</Link>
               <button title="Son" onClick={() => setSoundOn((value) => !value)} className="icon-button bg-white/10">
                 {soundOn ? <Volume2 className="h-5 w-5" /> : <Music2 className="h-5 w-5" />}
               </button>
               <button title="Sauvegarder" onClick={() => saveProfile(profile, false)} className="icon-button bg-white/10">
                 <Save className="h-5 w-5" />
               </button>
-              <div className="flex flex-1 items-center justify-end text-xs font-black uppercase tracking-[0.14em] text-[#68706a]">
-                {saving ? "save..." : "sync ok"}
+              <button title="Quitter" onClick={signOut} className="icon-button bg-white/10">
+                <LogOut className="h-5 w-5" />
+              </button>
+            </div>
+          </header>
+
+          <div className="grid min-h-0 gap-4 xl:grid-cols-[210px_minmax(0,1fr)]">
+            <aside className="glass-panel rounded-[30px] p-3">
+              <p className="eyebrow px-1">Chats</p>
+              <div className="mt-3 grid grid-cols-2 gap-2 xl:grid-cols-1">
+                {Object.entries(cats).map(([id, cat]) => (
+                  <button
+                    key={id}
+                    title={`Choisir ${cat.name}`}
+                    onClick={() => switchCat(id as CatId)}
+                    className={`grid grid-cols-[64px_1fr] items-center gap-3 rounded-[22px] border p-2 text-left font-black transition xl:grid-cols-1 ${
+                      profile.selected_cat === id
+                        ? "border-[#8df0bf] bg-[#8df0bf]/22 shadow-[0_0_30px_rgba(141,240,191,.2)]"
+                        : "border-white/10 bg-white/8 hover:-translate-y-0.5"
+                    }`}
+                  >
+                    <Image src={cat.src} alt={cat.name} width={120} height={120} className="aspect-square w-full rounded-[17px] object-cover" />
+                    <span>
+                      <span className="block text-sm">{cat.name}</span>
+                      <span className="block text-xs text-white/56">lvl {numberFormat.format(profile.cat_levels[id as CatId] ?? 1)}</span>
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </aside>
+
+            <section className="glass-panel flex min-h-[560px] flex-col rounded-[38px] p-4 lg:h-[calc(100vh-12rem)]">
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-[26px] border border-white/10 bg-black/52 p-4">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.2em] text-[#8df0bf]">Croquettes</p>
+                  <h2 className="text-4xl font-black leading-none sm:text-6xl">{numberFormat.format(profile.treats)}</h2>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-right sm:grid-cols-3">
+                  <MiniStat label="clic" value={numberFormat.format(treatsPerClick)} />
+                  <MiniStat label="auto" value={`${passiveGain.toFixed(1)}/s`} />
+                  <MiniStat label="combo" value={`x${combo}`} />
+                </div>
+              </div>
+
+              <div className="relative flex min-h-0 flex-1 items-center justify-center py-2">
+                <div className="absolute h-[min(58vw,460px)] w-[min(58vw,460px)] rounded-full blur-3xl" style={{ backgroundColor: currentCat.glow }} />
+                <button
+                  onPointerDown={handleClick}
+                  className="relative grid aspect-square w-full max-w-[470px] place-items-center rounded-full outline-none"
+                  style={{ background: `radial-gradient(circle, ${currentCat.glow} 0%, rgba(255,255,255,.22) 42%, transparent 70%)` }}
+                >
+                  <Image
+                    src={currentCat.src}
+                    alt={currentCat.name}
+                    width={900}
+                    height={900}
+                    priority
+                    className={`relative z-10 w-[86%] select-none rounded-[36px] object-cover shadow-[0_24px_58px_rgba(0,0,0,.22)] ring-4 ring-white/40 transition duration-150 ${
+                      pressed ? "scale-[.94] rotate-1 saturate-150" : "scale-100 hover:scale-[1.025]"
+                    }`}
+                    draggable={false}
+                  />
+                  {pops.map((pop) => (
+                    <span
+                      key={pop.id}
+                      className="pointer-events-none absolute z-20 animate-[floatUp_780ms_cubic-bezier(.15,.9,.2,1)_forwards] rounded-full px-4 py-2 text-xl font-black text-[#171b1a] shadow-xl"
+                      style={{ left: pop.x, top: pop.y, backgroundColor: pop.hue }}
+                    >
+                      +{numberFormat.format(pop.value)}
+                    </span>
+                  ))}
+                </button>
+              </div>
+
+              <div className="soft-card rounded-[24px] p-3">
+                <div className="mb-2 flex items-center justify-between gap-3 text-sm">
+                  <p className="font-black">{currentCat.name} - {currentCat.vibe}</p>
+                  {nextUpgrade && <p className="font-black text-white/62">Prochain: {numberFormat.format(nextUpgrade.cost)}</p>}
+                </div>
+                <div className="h-3 overflow-hidden rounded-full bg-white/12">
+                  <div className="h-full rounded-full bg-[#8df0bf] transition-all duration-300" style={{ width: `${nextProgress}%` }} />
+                </div>
+              </div>
+            </section>
+          </div>
+
+          <footer className="grid gap-3 xl:grid-cols-[1fr_1fr]">
+            <div className="glass-panel rounded-[26px] p-3">
+              <p className="eyebrow">Stats</p>
+              <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
+                <MiniStat label="Clics" value={numberFormat.format(profile.total_clicks)} />
+                <MiniStat label="Niveaux" value={numberFormat.format(totalUpgradeLevels)} />
+                <MiniStat label="Rebirths" value={numberFormat.format(profile.rebirths)} />
+                <MiniStat label={`${currentCat.name} lvl`} value={numberFormat.format(activeCatLevel)} />
+                <MiniStat label="Vie" value={numberFormat.format(profile.lifetime_treats)} />
+                <MiniStat label={saving ? "Sync" : "Etat"} value={saving ? "save" : "ok"} />
               </div>
             </div>
-          </Panel>
-        </aside>
-
-        <section className="glass-panel order-1 flex min-h-[650px] flex-col rounded-[38px] p-4 xl:order-2 xl:h-[calc(100vh-2rem)]">
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-[28px] border border-white/10 bg-black/52 p-4 text-white shadow-lg shadow-black/10">
-            <div>
-              <p className="text-xs font-black uppercase tracking-[0.2em] text-[#8df0bf]">Croquettes</p>
-              <h2 className="text-5xl font-black leading-none sm:text-6xl">{numberFormat.format(profile.treats)}</h2>
+            <div className="glass-panel rounded-[26px] p-3">
+              <div className="flex items-center gap-2">
+                <Trophy className="h-5 w-5 text-[#ff744d]" />
+                <p className="eyebrow">Classement</p>
+              </div>
+              <div className="mt-3 grid gap-2">
+                {(leaderboard.length ? leaderboard : [profile]).slice(0, 3).map((item, index) => (
+                  <div key={item.id} className="grid grid-cols-[1fr_auto] items-center gap-2 rounded-2xl bg-white/8 px-3 py-2 text-sm font-black">
+                    <span className="truncate">{index + 1}. {item.username}</span>
+                    <span>{numberFormat.format(item.treats)}</span>
+                    <span className="col-span-2 text-[11px] text-white/55">RB {numberFormat.format(item.rebirths)} - Clics {numberFormat.format(item.total_clicks)} - Vie {numberFormat.format(item.lifetime_treats)}</span>
+                  </div>
+                ))}
+              </div>
+              {message && <p className="mt-3 rounded-2xl bg-[#ff5f3d]/18 px-4 py-3 text-sm font-black text-[#ffd6ca]">{message}</p>}
             </div>
-            <div className="rounded-3xl bg-white/10 px-4 py-3 text-right">
-              <p className="text-xs font-black uppercase tracking-[0.18em] text-white/60">Combo</p>
-              <p className="flex items-center justify-end gap-2 text-3xl font-black text-[#ffd166]">
-                <Flame className="h-6 w-6" />
-                x{combo}
-              </p>
-            </div>
-          </div>
-
-          <div className="relative flex flex-1 items-center justify-center py-3">
-            <div className="absolute h-[min(72vw,560px)] w-[min(72vw,560px)] rounded-full blur-3xl" style={{ backgroundColor: currentCat.glow }} />
-            <span className="sparkle-dot left-[15%] top-[18%] h-4 w-4 bg-[#ffd166]" />
-            <span className="sparkle-dot right-[14%] top-[24%] h-3 w-3 bg-[#8df0bf] [animation-delay:220ms]" />
-            <span className="sparkle-dot bottom-[22%] left-[18%] h-3 w-3 bg-[#69d6ff] [animation-delay:420ms]" />
-            <span className="sparkle-dot bottom-[18%] right-[19%] h-5 w-5 bg-[#ff8c61] [animation-delay:680ms]" />
-            <button
-              onPointerDown={handleClick}
-              className="relative grid aspect-square w-full max-w-[540px] place-items-center rounded-full outline-none"
-              style={{ background: `radial-gradient(circle, ${currentCat.glow} 0%, rgba(255,255,255,.58) 42%, transparent 70%)` }}
-            >
-              <span className="absolute inset-10 rounded-full border border-white/20 bg-white/8 shadow-inner" />
-              <Image
-                src={currentCat.src}
-                alt={currentCat.name}
-                width={900}
-                height={900}
-                priority
-                className={`relative z-10 w-[86%] select-none rounded-[42px] object-cover shadow-[0_24px_58px_rgba(0,0,0,.22)] ring-8 ring-white/60 transition duration-150 ${
-                  pressed ? "scale-[.94] rotate-1 saturate-150" : "scale-100 hover:scale-[1.025]"
-                }`}
-                draggable={false}
-              />
-              {pops.map((pop) => (
-                <span
-                  key={pop.id}
-                  className="pointer-events-none absolute z-20 animate-[floatUp_780ms_cubic-bezier(.15,.9,.2,1)_forwards] rounded-full px-4 py-2 text-xl font-black text-[#171b1a] shadow-xl"
-                  style={{ left: pop.x, top: pop.y, backgroundColor: pop.hue }}
-                >
-                  +{numberFormat.format(pop.value)}
-                </span>
-              ))}
-            </button>
-          </div>
-
-          <div className="soft-card rounded-[28px] p-4 shadow-lg shadow-black/5">
-            <div className="mb-2 flex items-center justify-between gap-3">
-              <p className="font-black">{currentCat.name} est en mode {currentCat.vibe}</p>
-              {nextUpgrade && <p className="text-sm font-black text-white/62">Prochain: {numberFormat.format(nextUpgrade.cost)}</p>}
-            </div>
-            <div className="h-4 overflow-hidden rounded-full bg-white/12">
-              <div className="h-full rounded-full bg-[#8df0bf] transition-all duration-300" style={{ width: `${nextProgress}%` }} />
-            </div>
-          </div>
+          </footer>
         </section>
 
-        <aside className="order-3 flex flex-col gap-4">
-          <Panel>
-            <div className="flex items-center justify-between gap-3">
-              <p className="eyebrow">Boutique</p>
-              <Coins className="h-6 w-6 text-[#ff744d]" />
-            </div>
-            <div className="mt-4 grid gap-3">
+        <aside className="glass-panel flex min-h-0 flex-col rounded-[30px] p-4 lg:h-[calc(100vh-2rem)]">
+          <div className="flex shrink-0 items-center justify-between gap-3">
+            <p className="eyebrow">Boutique infinie</p>
+            <Coins className="h-6 w-6 text-[#ff744d]" />
+          </div>
+          <div className="mt-4 min-h-0 flex-1 overflow-y-auto pr-1">
+            <div className="grid gap-3">
               <button
                 onClick={levelUpCurrentCat}
                 className="group rounded-[24px] border border-[#65b8ff] bg-[#65b8ff]/14 p-3 text-left shadow-[0_0_30px_rgba(101,184,255,.14)] transition active:translate-y-1"
@@ -1151,35 +1160,12 @@ export default function ClickerGame() {
                 );
               })}
             </div>
-          </Panel>
-
-          <Panel>
-            <div className="flex items-center gap-2">
-              <Trophy className="h-5 w-5 text-[#ff744d]" />
-              <p className="eyebrow">Classement</p>
-            </div>
-            <div className="mt-4 grid gap-2">
-              {(leaderboard.length ? leaderboard : [profile]).map((item, index) => (
-                <div key={item.id} className="rounded-2xl bg-white/8 px-3 py-3 text-sm font-black">
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="truncate">{index + 1}. {item.username}</span>
-                    <span className="rounded-full bg-white/12 px-3 py-1">{numberFormat.format(item.treats)}</span>
-                  </div>
-                  <div className="mt-2 grid grid-cols-3 gap-2 text-[11px] text-white/58">
-                    <span>RB {numberFormat.format(item.rebirths)}</span>
-                    <span>Clics {numberFormat.format(item.total_clicks)}</span>
-                    <span>Vie {numberFormat.format(item.lifetime_treats)}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-            {message && <p className="mt-3 rounded-2xl bg-[#ff5f3d]/18 px-4 py-3 text-sm font-black text-[#ffd6ca]">{message}</p>}
-            {!isSupabaseConfigured && (
-              <p className="soft-card mt-3 rounded-2xl px-4 py-3 text-xs font-bold text-white/60">
-                Le classement global apparaitra avec Supabase.
-              </p>
-            )}
-          </Panel>
+          </div>
+          {!isSupabaseConfigured && (
+            <p className="soft-card mt-3 shrink-0 rounded-2xl px-4 py-3 text-xs font-bold text-white/60">
+              Le classement global apparaitra avec Supabase.
+            </p>
+          )}
         </aside>
       </div>
     </main>
@@ -1210,6 +1196,15 @@ function StatRow({
         <span className="truncate">{label}</span>
       </span>
       <span className="text-white">{value}</span>
+    </div>
+  );
+}
+
+function MiniStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/8 px-3 py-2">
+      <p className="text-[10px] font-black uppercase tracking-[0.14em] text-white/45">{label}</p>
+      <p className="truncate text-base font-black text-white">{value}</p>
     </div>
   );
 }
