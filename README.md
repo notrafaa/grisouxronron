@@ -1,36 +1,44 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Squeechie Cats
 
-## Getting Started
+Jeu Next.js/Vercel de farm clicker avec pseudo unique, choix de chat, sauvegarde Supabase, upgrades, sons WebAudio et classement.
 
-First, run the development server:
+## Lancer en local
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Ouvre `http://localhost:3000`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Sans variables Supabase, le site passe en mode demo avec `localStorage`. C'est pratique pour tester l'interface.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Brancher Supabase
 
-## Learn More
+1. Cree un projet Supabase.
+2. Dans Supabase, active `Authentication > Sign In / Providers > Anonymous sign-ins`.
+3. Ouvre `SQL Editor` et execute le contenu de `supabase/schema.sql`.
+4. Copie `.env.example` vers `.env.local`.
+5. Renseigne:
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+NEXT_PUBLIC_SUPABASE_URL=https://ton-projet.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=ton-anon-key
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Le pseudo est unique grace a un index SQL sur `lower(username)`, donc `Milo` et `milo` ne peuvent pas exister en double.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Deployer sur Vercel
 
-## Deploy on Vercel
+Ajoute les memes variables dans `Project Settings > Environment Variables`, puis deploie normalement le repo Next.js.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Remplacer les chats
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Les images temporaires sont ici:
+
+```txt
+public/cats/grisou.png
+public/cats/ronron.png
+```
+
+Tu peux les remplacer par tes fichiers IA en gardant les memes noms, ou modifier les chemins dans `src/app/page.tsx`.
