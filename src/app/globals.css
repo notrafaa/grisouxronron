@@ -1,40 +1,36 @@
 @import "tailwindcss";
 
 :root {
-  --background: #090d12;
-  --foreground: #f8f5ea;
-  --ink: #090d12;
-  --paper: #f8f5ea;
-  --mint: #8df0bf;
-  --coral: #ff5f3d;
-  --gold: #ffd166;
+  /* Cat theme */
+  --cat-bg: #0c0906;
+  --cat-orange: #ff8c32;
+  --cat-pink: #ff5577;
+  --cat-gold: #ffcc00;
+  --cat-green: #4ade80;
+  --cat-purple: #c084fc;
+  --cat-text: #fef0d0;
+  /* Legacy compat */
+  --background: #0c0906;
+  --foreground: #fef0d0;
+  --mint: #4ade80;
+  --coral: #ff5577;
+  --gold: #ffcc00;
   --sky: #65b8ff;
+  --ink: #0c0906;
+  --paper: #fef0d0;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-background: var(--cat-bg);
+  --color-foreground: var(--cat-text);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
-  min-height: 100vh;
-}
-
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: -2;
-  background:
-    radial-gradient(circle at 18% 12%, rgb(101 184 255 / 0.24), transparent 34%),
-    radial-gradient(circle at 84% 18%, rgb(255 95 61 / 0.22), transparent 32%),
-    radial-gradient(circle at 54% 88%, rgb(141 240 191 / 0.18), transparent 34%),
-    linear-gradient(135deg, #07090e, #101820 48%, #080b10);
+  background: var(--cat-bg);
+  color: var(--cat-text);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
 }
 
 button,
@@ -47,28 +43,246 @@ button {
 }
 
 ::selection {
-  background: #8df0bf;
-  color: #171b1a;
+  background: var(--cat-orange);
+  color: #1a0800;
 }
 
-.eyebrow {
-  color: rgb(248 245 234 / 0.58);
-  font-size: 0.72rem;
+/* ============================
+   CAT SHELL — full-screen no-scroll container
+   ============================ */
+.cat-shell {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 22% 18%, rgba(255, 140, 50, 0.24) 0%, transparent 44%),
+    radial-gradient(circle at 80% 78%, rgba(255, 85, 119, 0.18) 0%, transparent 38%),
+    radial-gradient(circle at 65% 16%, rgba(192, 132, 252, 0.12) 0%, transparent 30%),
+    #0c0906;
+  color: var(--cat-text);
+}
+
+/* Paw-print tiled background */
+.cat-shell::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cellipse cx='50' cy='68' rx='18' ry='20' fill='%23ff8c32'/%3E%3Ccircle cx='24' cy='38' r='9' fill='%23ff8c32'/%3E%3Ccircle cx='44' cy='28' r='9' fill='%23ff8c32'/%3E%3Ccircle cx='64' cy='28' r='9' fill='%23ff8c32'/%3E%3Ccircle cx='80' cy='42' r='9' fill='%23ff8c32'/%3E%3C/svg%3E");
+  background-size: 110px 110px;
+  opacity: 0.028;
+}
+
+/* Ambient rotating glow */
+.cat-shell::after {
+  content: "";
+  position: fixed;
+  inset: -30%;
+  pointer-events: none;
+  z-index: 0;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    rgba(255, 140, 50, 0.12) 60deg,
+    transparent 120deg,
+    rgba(255, 85, 119, 0.08) 210deg,
+    transparent 270deg,
+    rgba(192, 132, 252, 0.07) 330deg,
+    transparent 360deg
+  );
+  animation: slowSpin 26s linear infinite;
+  filter: blur(48px);
+  opacity: 0.7;
+}
+
+/* ============================
+   PANELS
+   ============================ */
+.cat-panel {
+  background: rgba(14, 8, 4, 0.90);
+  border: 1px solid rgba(255, 140, 50, 0.18);
+  backdrop-filter: blur(24px) saturate(1.3);
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 140, 50, 0.12);
+}
+
+.cat-card {
+  background: rgba(255, 140, 50, 0.07);
+  border: 1px solid rgba(255, 140, 50, 0.14);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+/* ============================
+   BUTTONS
+   ============================ */
+.cat-btn {
+  color: #1c0800;
+  background: linear-gradient(135deg, #ffaa4d 0%, #ff7200 100%);
+  box-shadow: 0 7px 0 #6b2800, 0 14px 28px rgba(255, 140, 50, 0.24);
   font-weight: 900;
-  letter-spacing: 0.16em;
+  transition: transform 110ms ease, box-shadow 110ms ease, filter 110ms ease;
+}
+
+.cat-btn:hover {
+  filter: brightness(1.09) saturate(1.1);
+  transform: translateY(-2px);
+  box-shadow: 0 9px 0 #6b2800, 0 18px 36px rgba(255, 140, 50, 0.3);
+}
+
+.cat-btn:active {
+  transform: translateY(5px);
+  box-shadow: 0 2px 0 #6b2800, 0 4px 12px rgba(255, 140, 50, 0.1);
+  filter: brightness(0.95);
+}
+
+.cat-btn-pink {
+  color: #1c0008;
+  background: linear-gradient(135deg, #ff7799 0%, #ff2255 100%);
+  box-shadow: 0 7px 0 #7a0022, 0 14px 28px rgba(255, 50, 100, 0.22);
+  font-weight: 900;
+  transition: transform 110ms ease, box-shadow 110ms ease;
+}
+
+.cat-btn-pink:active {
+  transform: translateY(5px);
+  box-shadow: 0 2px 0 #7a0022;
+}
+
+.cat-icon-btn {
+  display: grid;
+  height: 2.5rem;
+  width: 2.5rem;
+  place-items: center;
+  border: 1px solid rgba(255, 140, 50, 0.22);
+  border-radius: 0.875rem;
+  color: var(--cat-text);
+  background: rgba(255, 140, 50, 0.09);
+  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.55);
+  transition: transform 110ms ease, box-shadow 110ms ease, background 110ms ease;
+}
+
+.cat-icon-btn:hover {
+  background: rgba(255, 140, 50, 0.16);
+  transform: translateY(-1px);
+}
+
+.cat-icon-btn:active {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.55);
+}
+
+/* ============================
+   AFFORDABLE UPGRADE GLOW
+   ============================ */
+.can-afford {
+  border-color: rgba(255, 140, 50, 0.55) !important;
+  animation: affordPulse 2.2s ease-in-out infinite;
+}
+
+@keyframes affordPulse {
+  0%,
+  100% {
+    box-shadow: 0 0 16px rgba(255, 140, 50, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 32px rgba(255, 140, 50, 0.44), 0 0 64px rgba(255, 140, 50, 0.14);
+  }
+}
+
+/* ============================
+   SCREEN SHAKE (combo milestone)
+   ============================ */
+.screen-shake {
+  animation: screenShake 0.32s ease-in-out;
+}
+
+@keyframes screenShake {
+  0%,
+  100% { transform: translate(0, 0) rotate(0deg); }
+  15%  { transform: translate(-4px, -2px) rotate(-0.6deg); }
+  30%  { transform: translate(4px, 3px) rotate(0.6deg); }
+  50%  { transform: translate(-3px, 4px) rotate(-0.4deg); }
+  70%  { transform: translate(3px, -3px) rotate(0.4deg); }
+  85%  { transform: translate(-2px, 2px) rotate(-0.2deg); }
+}
+
+/* ============================
+   POP / FLOAT UP (click feedback)
+   ============================ */
+@keyframes floatUp {
+  0%   { opacity: 0; transform: translate(-50%, -10%) scale(0.75); }
+  12%  { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -210%) scale(1.18) rotate(-6deg); }
+}
+
+/* ============================
+   CAT IDLE BOB
+   ============================ */
+@keyframes gentleBob {
+  0%,
+  100% { transform: translateY(0) scale(1); }
+  50%  { transform: translateY(-7px) scale(1.012); }
+}
+
+/* ============================
+   CAT GLOW PULSE
+   ============================ */
+@keyframes glowPulse {
+  0%,
+  100% { opacity: 0.55; transform: scale(1); }
+  50%  { opacity: 1; transform: scale(1.1); }
+}
+
+/* ============================
+   SLOW SPIN (ambient bg)
+   ============================ */
+@keyframes slowSpin {
+  to { transform: rotate(360deg); }
+}
+
+/* ============================
+   COMBO FLASH
+   ============================ */
+@keyframes comboFlash {
+  0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.6); }
+  20%  { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
+  80%  { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.4); }
+}
+
+/* ============================
+   MOBILE TAB BAR
+   ============================ */
+.cat-tab-bar {
+  background: rgba(14, 8, 4, 0.96);
+  border-top: 1px solid rgba(255, 140, 50, 0.18);
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.4);
+}
+
+/* ============================
+   EYEBROW LABEL
+   ============================ */
+.cat-eyebrow {
+  color: rgba(255, 140, 50, 0.72);
+  font-size: 0.67rem;
+  font-weight: 900;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
 }
 
+/* ============================
+   LEGACY — kept for duel page
+   ============================ */
 .neo-shell {
-  position: relative;
-  min-height: 100vh;
+  position: fixed;
+  inset: 0;
   overflow: hidden;
   background:
     radial-gradient(circle at 20% 20%, rgb(101 184 255 / 0.18), transparent 32%),
     radial-gradient(circle at 82% 18%, rgb(255 95 61 / 0.18), transparent 30%),
     radial-gradient(circle at 50% 100%, rgb(141 240 191 / 0.12), transparent 36%),
     #090d12;
-  color: var(--paper);
+  color: #f8f5ea;
 }
 
 .neo-shell::before,
@@ -110,7 +324,7 @@ button {
 
 .neo-button {
   color: #07110d;
-  background: linear-gradient(135deg, var(--mint), #53d89a);
+  background: linear-gradient(135deg, #8df0bf, #53d89a);
   box-shadow: 0 10px 0 rgb(35 104 74), 0 18px 36px rgb(141 240 191 / 0.2);
   transition: transform 150ms ease, box-shadow 150ms ease, filter 150ms ease;
 }
@@ -127,13 +341,13 @@ button {
 
 .danger-button {
   color: #160704;
-  background: linear-gradient(135deg, #ff8a5f, var(--coral));
+  background: linear-gradient(135deg, #ff8a5f, #ff5f3d);
   box-shadow: 0 10px 0 #7a1d15, 0 18px 36px rgb(255 95 61 / 0.24);
 }
 
 .duel-shell {
-  position: relative;
-  min-height: 100vh;
+  position: fixed;
+  inset: 0;
   overflow: hidden;
   background:
     radial-gradient(circle at 18% 14%, rgb(255 95 61 / 0.3), transparent 31%),
@@ -196,12 +410,9 @@ button {
   place-items: center;
   border: 1px solid rgb(255 255 255 / 0.14);
   border-radius: 1rem;
-  color: var(--paper);
+  color: #f8f5ea;
   box-shadow: 0 5px 0 rgb(0 0 0 / 0.54);
-  transition:
-    transform 150ms ease,
-    box-shadow 150ms ease,
-    filter 150ms ease;
+  transition: transform 150ms ease, box-shadow 150ms ease, filter 150ms ease;
 }
 
 .icon-button:hover {
@@ -214,6 +425,14 @@ button {
   transform: translateY(3px);
 }
 
+.eyebrow {
+  color: rgb(248 245 234 / 0.58);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
 .sparkle-dot {
   position: absolute;
   z-index: 5;
@@ -222,100 +441,37 @@ button {
   animation: bob 2.2s ease-in-out infinite;
 }
 
-@keyframes floatUp {
-  0% {
-    opacity: 0;
-    transform: translate(-50%, -10%) scale(0.85);
-  }
-
-  18% {
-    opacity: 1;
-  }
-
-  100% {
-    opacity: 0;
-    transform: translate(-50%, -185%) scale(1.18) rotate(-5deg);
-  }
-}
-
 @keyframes bob {
   0%,
-  100% {
-    transform: translateY(0) scale(1);
-  }
-
-  50% {
-    transform: translateY(-12px) scale(1.12);
-  }
-}
-
-@keyframes slowSpin {
-  to {
-    transform: rotate(360deg);
-  }
+  100% { transform: translateY(0) scale(1); }
+  50%  { transform: translateY(-12px) scale(1.12); }
 }
 
 @keyframes combatColor {
-  0% {
-    opacity: 0.55;
-    filter: hue-rotate(0deg) blur(24px) saturate(1.4);
-  }
-
-  100% {
-    opacity: 0.95;
-    filter: hue-rotate(80deg) blur(28px) saturate(2);
-  }
+  0%   { opacity: 0.55; filter: hue-rotate(0deg) blur(24px) saturate(1.4); }
+  100% { opacity: 0.95; filter: hue-rotate(80deg) blur(28px) saturate(2); }
 }
 
 @keyframes scanMove {
-  to {
-    background-position: 0 6px, 0 0;
-  }
+  to { background-position: 0 6px, 0 0; }
 }
 
 @keyframes hitPulse {
   0%,
-  100% {
-    opacity: 0.55;
-  }
-
-  50% {
-    opacity: 1;
-  }
+  100% { opacity: 0.55; }
+  50%  { opacity: 1; }
 }
 
 @keyframes boltSweep {
-  0% {
-    opacity: 0;
-    translate: -28vw 0;
-  }
-
-  18%,
-  58% {
-    opacity: 1;
-  }
-
-  100% {
-    opacity: 0;
-    translate: 92vw 0;
-  }
+  0%        { opacity: 0; translate: -28vw 0; }
+  18%, 58%  { opacity: 1; }
+  100%      { opacity: 0; translate: 92vw 0; }
 }
 
 @keyframes arenaShake {
   0%,
-  100% {
-    transform: translate3d(0, 0, 0);
-  }
-
-  25% {
-    transform: translate3d(1px, -1px, 0);
-  }
-
-  50% {
-    transform: translate3d(-1px, 1px, 0);
-  }
-
-  75% {
-    transform: translate3d(1px, 1px, 0);
-  }
+  100% { transform: translate3d(0, 0, 0); }
+  25%  { transform: translate3d(1px, -1px, 0); }
+  50%  { transform: translate3d(-1px, 1px, 0); }
+  75%  { transform: translate3d(1px, 1px, 0); }
 }
