@@ -398,10 +398,10 @@ export default function Home() {
             <div>
               <p className="mb-3 inline-flex items-center gap-2 rounded-full bg-[#20231f] px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-white">
                 <Cat className="h-4 w-4" />
-                Farm clicker
+                LE MEILLEUR JEU
               </p>
               <h1 className="max-w-3xl text-5xl font-black leading-none text-[#20231f] sm:text-7xl">
-                Squeechie Cats
+                Grisou X Ronron
               </h1>
             </div>
             <div className="grid max-w-2xl grid-cols-2 gap-4">
