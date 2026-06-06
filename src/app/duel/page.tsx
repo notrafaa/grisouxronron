@@ -1,528 +1,893 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowLeft, Sword, Zap, Timer, Trophy, Flame } from "lucide-react";
-import { isSupabaseConfigured } from "@/lib/supabase";
+import { ArrowLeft, Copy, Flame, Sword, Timer, Trophy, Zap } from "lucide-react";
+import { supabase } from "@/lib/supabase";
 
-type DuelEventType = "phrase" | "target" | "spam" | "hold" | "bait";
+// ─── Types ────────────────────────────────────────────────────────────────────
 
-type DuelEvent = {
+type CatId = "grisou" | "ronron";
+type Phase = "lobby" | "waiting" | "joining" | "countdown" | "battle" | "end";
+type EvType = "spam" | "phrase" | "target" | "hold" | "bait";
+
+interface DuelEvent {
   id: string;
-  type: DuelEventType;
+  type: EvType;
   label: string;
   duration: number;
   points: number;
-};
-
-type Fighter = {
-  id: string;
-  username: string;
-  hp: number;
-  score: number;
-  cat: "grisou" | "ronron";
-};
-
-type Phase = "lobby" | "countdown" | "battle" | "end";
-
-const EVENTS: Omit<DuelEvent, "id">[] = [
-  { type:"spam",   label:"SPAM RAPIDE ! 🐾",          duration:3000, points:8  },
-  { type:"phrase", label:"Tape : Miaou Turbo !",       duration:4500, points:12 },
-  { type:"target", label:"Clique la patte dorée ! 🌟", duration:2500, points:15 },
-  { type:"hold",   label:"MAINTIENS la patte ! ⚡",    duration:3500, points:10 },
-  { type:"phrase", label:"Tape : Grisou le goat",      duration:4000, points:11 },
-  { type:"bait",   label:"Ne clique PAS 🚫",           duration:2200, points:20 },
-  { type:"spam",   label:"ULTRA SPAM ! 🔥🔥",          duration:2000, points:18 },
-  { type:"phrase", label:"Tape : Ronron squeechie",    duration:5000, points:14 },
-  { type:"target", label:"Patte arc-en-ciel ! 🌈",     duration:2000, points:20 },
-];
-
-function randomEvent(): DuelEvent {
-  const base = EVENTS[Math.floor(Math.random() * EVENTS.length)];
-  return { ...base, id: Math.random().toString(36).slice(2) };
 }
 
-const CAT_SRC: Record<string, string> = {
+interface Fighter {
+  username: string;
+  cat: CatId;
+  hp: number;
+  score: number;
+}
+
+const CAT_SRC: Record<CatId, string> = {
   grisou: "/cats/grisou.jpg",
   ronron: "/cats/ronron.jpg",
 };
 
-function useAudio() {
-  const ctx = useRef<AudioContext | null>(null);
-  const getCtx = () => {
-    if (!ctx.current && typeof window !== "undefined") ctx.current = new AudioContext();
-    return ctx.current!;
-  };
-  const hit = useCallback(() => {
-    const c = getCtx(); const now = c.currentTime;
-    const o = c.createOscillator(); const g = c.createGain();
-    o.type = "square"; o.frequency.setValueAtTime(180, now); o.frequency.exponentialRampToValueAtTime(60, now+0.22);
-    g.gain.setValueAtTime(0.22, now); g.gain.exponentialRampToValueAtTime(0.001, now+0.25);
-    o.connect(g); g.connect(c.destination); o.start(now); o.stop(now+0.28);
-  }, []);
-  const score = useCallback(() => {
-    const c = getCtx(); const now = c.currentTime;
-    for (let i=0;i<3;i++) {
-      const t = now+i*0.08; const o = c.createOscillator(); const g = c.createGain();
-      o.type = "sine"; o.frequency.setValueAtTime([660,880,1100][i],t);
-      g.gain.setValueAtTime(0.001,t); g.gain.exponentialRampToValueAtTime(0.18,t+0.01); g.gain.exponentialRampToValueAtTime(0.001,t+0.1);
-      o.connect(g); g.connect(c.destination); o.start(t); o.stop(t+0.12);
-    }
-  }, []);
-  const fail = useCallback(() => {
-    const c = getCtx(); const now = c.currentTime;
-    const o = c.createOscillator(); const f = c.createBiquadFilter(); const g = c.createGain();
-    o.type = "sawtooth"; o.frequency.setValueAtTime(260,now); o.frequency.exponentialRampToValueAtTime(80,now+0.3);
-    f.type = "lowpass"; f.frequency.value = 600;
-    g.gain.setValueAtTime(0.18,now); g.gain.exponentialRampToValueAtTime(0.001,now+0.32);
-    o.connect(f); f.connect(g); g.connect(c.destination); o.start(now); o.stop(now+0.35);
-  }, []);
-  const beep = useCallback((n: number) => {
-    const c = getCtx(); const now = c.currentTime;
-    const o = c.createOscillator(); const g = c.createGain();
-    o.type = "sine"; o.frequency.value = n===0?1200:480;
-    g.gain.setValueAtTime(0.001,now); g.gain.exponentialRampToValueAtTime(0.28,now+0.01); g.gain.exponentialRampToValueAtTime(0.001,now+0.12);
-    o.connect(g); g.connect(c.destination); o.start(now); o.stop(now+0.15);
-  }, []);
-  return { hit, score, fail, beep };
+const CAT_INFO: Record<CatId, { name: string; vibe: string }> = {
+  grisou: { name: "Grisou", vibe: "Moelleux cosmique" },
+  ronron: { name: "Ronron", vibe: "Squeechie solaire" },
+};
+
+const EVENT_POOL: Omit<DuelEvent, "id">[] = [
+  { type: "spam",   label: "SPAM RAPIDE ! 🐾",          duration: 3000, points: 8  },
+  { type: "phrase", label: "Tape : Miaou Turbo !",       duration: 5000, points: 12 },
+  { type: "target", label: "Clique la patte ! 🌟",        duration: 2500, points: 15 },
+  { type: "hold",   label: "MAINTIENS ! ⚡",              duration: 3500, points: 10 },
+  { type: "phrase", label: "Tape : Grisou le goat",      duration: 5000, points: 11 },
+  { type: "bait",   label: "Ne clique PAS 🚫",           duration: 2500, points: 20 },
+  { type: "spam",   label: "ULTRA SPAM ! 🔥🔥",          duration: 2200, points: 18 },
+  { type: "phrase", label: "Tape : Ronron squeechie",    duration: 5500, points: 14 },
+  { type: "target", label: "Patte arc-en-ciel ! 🌈",     duration: 2200, points: 20 },
+];
+
+function makeEvent(): DuelEvent {
+  const base = EVENT_POOL[Math.floor(Math.random() * EVENT_POOL.length)];
+  return { ...base, id: Math.random().toString(36).slice(2) };
 }
 
+function makeCode(): string {
+  return Math.random().toString(36).slice(2, 8).toUpperCase();
+}
+
+// ─── Audio ────────────────────────────────────────────────────────────────────
+
+function useAudio() {
+  const ctx = useRef<AudioContext | null>(null);
+  function ac() {
+    if (!ctx.current && typeof window !== "undefined")
+      ctx.current = new AudioContext();
+    return ctx.current;
+  }
+  const beep = useCallback((freq: number, vol = 0.22, dur = 0.12) => {
+    const c = ac(); if (!c) return;
+    const now = c.currentTime;
+    const o = c.createOscillator(); const g = c.createGain();
+    o.type = "sine"; o.frequency.value = freq;
+    g.gain.setValueAtTime(0.001, now);
+    g.gain.exponentialRampToValueAtTime(vol, now + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.001, now + dur);
+    o.connect(g); g.connect(c.destination); o.start(now); o.stop(now + dur + 0.05);
+  }, []);
+  const hit = useCallback(() => {
+    const c = ac(); if (!c) return;
+    const now = c.currentTime;
+    const o = c.createOscillator(); const g = c.createGain();
+    o.type = "square"; o.frequency.setValueAtTime(200, now);
+    o.frequency.exponentialRampToValueAtTime(55, now + 0.24);
+    g.gain.setValueAtTime(0.26, now); g.gain.exponentialRampToValueAtTime(0.001, now + 0.26);
+    o.connect(g); g.connect(c.destination); o.start(now); o.stop(now + 0.3);
+  }, []);
+  const ding = useCallback(() => {
+    const c = ac(); if (!c) return;
+    const now = c.currentTime;
+    [660, 880, 1100].forEach((f, i) => {
+      const t = now + i * 0.07; const o = c.createOscillator(); const g = c.createGain();
+      o.type = "sine"; o.frequency.value = f;
+      g.gain.setValueAtTime(0.001, t); g.gain.exponentialRampToValueAtTime(0.2, t + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.11);
+      o.connect(g); g.connect(c.destination); o.start(t); o.stop(t + 0.14);
+    });
+  }, []);
+  const buzz = useCallback(() => {
+    const c = ac(); if (!c) return;
+    const now = c.currentTime;
+    const o = c.createOscillator(); const f = c.createBiquadFilter(); const g = c.createGain();
+    o.type = "sawtooth"; o.frequency.setValueAtTime(280, now);
+    o.frequency.exponentialRampToValueAtTime(80, now + 0.32);
+    f.type = "lowpass"; f.frequency.value = 700;
+    g.gain.setValueAtTime(0.20, now); g.gain.exponentialRampToValueAtTime(0.001, now + 0.34);
+    o.connect(f); f.connect(g); g.connect(c.destination); o.start(now); o.stop(now + 0.38);
+  }, []);
+  return { beep, hit, ding, buzz };
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
+
 export default function DuelPage() {
+  // ── persistent identity (read from localStorage) ──────────────────────────
+  const [myUsername, setMyUsername] = useState("Joueur");
+  const [myCat, setMyCat] = useState<CatId>("grisou");
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const raw = window.localStorage.getItem("squeechie-clicker-demo-profile");
+      if (raw) {
+        const p = JSON.parse(raw);
+        if (p.username) setMyUsername(p.username);
+        if (p.selected_cat) setMyCat(p.selected_cat);
+      }
+    } catch { /* ignore */ }
+  }, []);
+
+  // ── phase & multiplayer state ──────────────────────────────────────────────
   const [phase, setPhase] = useState<Phase>("lobby");
-  const [cdCount, setCdCount] = useState(3);
-  const [myCat, setMyCat] = useState<"grisou"|"ronron">("grisou");
-  const [me, setMe] = useState<Fighter>({ id:"p1", username:"Toi", hp:100, score:0, cat:"grisou" });
-  const [opp, setOpp] = useState<Fighter>({ id:"p2", username:"IA", hp:100, score:0, cat:"ronron" });
-  const [event, setEvent] = useState<DuelEvent|null>(null);
+  const [isMulti, setIsMulti] = useState(false);
+  const [isHost, setIsHost] = useState(false);
+  const [lobbyCode, setLobbyCode] = useState("");
+  const [joinInput, setJoinInput] = useState("");
+  const [joinError, setJoinError] = useState("");
+  const [copied, setCopied] = useState(false);
+
+  // ── fighters ───────────────────────────────────────────────────────────────
+  const initMe = (): Fighter => ({ username: myUsername, cat: myCat, hp: 100, score: 0 });
+  const initOpp = (): Fighter => ({ username: "Adversaire", cat: "ronron", hp: 100, score: 0 });
+  const [me, setMe] = useState<Fighter>(initMe);
+  const [opp, setOpp] = useState<Fighter>(initOpp);
+
+  // ── battle state ───────────────────────────────────────────────────────────
+  const [countdown, setCountdown] = useState(3);
+  const [battleSecs, setBattleSecs] = useState(60);
+  const [event, setEvent] = useState<DuelEvent | null>(null);
   const [evPct, setEvPct] = useState(100);
   const [spamCount, setSpamCount] = useState(0);
-  const [phraseInput, setPhraseInput] = useState("");
+  const [phraseVal, setPhraseVal] = useState("");
   const [holdActive, setHoldActive] = useState(false);
   const [holdPts, setHoldPts] = useState(0);
-  const [showGoldenPaw, setShowGoldenPaw] = useState(false);
-  const [targetPos, setTargetPos] = useState({x:50,y:50});
-  const [dmg, setDmg] = useState<{side:"left"|"right";val:number}|null>(null);
-  const [battleTime, setBattleTime] = useState(60);
-  const [roundMsg, setRoundMsg] = useState("");
-  const [winner, setWinner] = useState<Fighter|null>(null);
+  const [showPaw, setShowPaw] = useState(false);
+  const [pawPos, setPawPos] = useState({ x: 50, y: 50 });
+  const [flash, setFlash] = useState<{ side: "left" | "right"; val: number } | null>(null);
+  const [toast, setToast] = useState("");
 
-  const audio = useAudio();
-  const evTimer = useRef<ReturnType<typeof setTimeout>|null>(null);
-  const evInterval = useRef<ReturnType<typeof setInterval>|null>(null);
-  const battleInterval = useRef<ReturnType<typeof setInterval>|null>(null);
-  const holdInterval = useRef<ReturnType<typeof setInterval>|null>(null);
+  // ── refs ───────────────────────────────────────────────────────────────────
+  const evTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const evIntRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const battleIntRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const holdIntRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const spamRef = useRef(0);
   const phaseRef = useRef<Phase>("lobby");
+  const channelRef = useRef<ReturnType<NonNullable<typeof supabase>["channel"]> | null>(null);
+  const currentEvRef = useRef<DuelEvent | null>(null);
+
   phaseRef.current = phase;
+  currentEvRef.current = event;
 
-  const showFlash = useCallback((side:"left"|"right", val:number) => {
-    setDmg({side,val}); audio.hit();
-    setTimeout(()=>setDmg(null),600);
-  },[audio]);
+  const audio = useAudio();
 
-  const dealDmgToOpp = useCallback((pts:number) => {
-    setOpp(o=>({...o,hp:Math.max(0,o.hp-pts),score:o.score}));
-    setMe(m=>({...m,score:m.score+pts}));
-    showFlash("right",pts); audio.score();
-    setRoundMsg(`+${pts} pts 🐾`);
-    setTimeout(()=>setRoundMsg(""),900);
-  },[showFlash,audio]);
+  // ── helpers ────────────────────────────────────────────────────────────────
+  const showToast = useCallback((msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(""), 950);
+  }, []);
 
-  const takeDmg = useCallback((pts:number) => {
-    setMe(m=>({...m,hp:Math.max(0,m.hp-pts)}));
-    showFlash("left",pts); audio.fail();
-    setRoundMsg(`-${pts} HP 💔`);
-    setTimeout(()=>setRoundMsg(""),900);
-  },[showFlash,audio]);
+  const showFlash = useCallback((side: "left" | "right", val: number) => {
+    setFlash({ side, val });
+    audio.hit();
+    setTimeout(() => setFlash(null), 650);
+  }, [audio]);
 
-  const clearEv = useCallback(()=>{
-    if (evTimer.current) clearTimeout(evTimer.current);
-    if (evInterval.current) clearInterval(evInterval.current);
-  },[]);
+  const clearEvTimers = useCallback(() => {
+    if (evTimerRef.current) clearTimeout(evTimerRef.current);
+    if (evIntRef.current) clearInterval(evIntRef.current);
+  }, []);
 
-  const launchEvent = useCallback(()=>{
-    if (phaseRef.current!=="battle") return;
-    clearEv();
-    const ev = randomEvent();
-    setEvent(ev); setEvPct(100); setSpamCount(0); spamRef.current=0;
-    setPhraseInput(""); setHoldActive(false); setHoldPts(0); setShowGoldenPaw(false);
-    if (ev.type==="target"||ev.type==="hold") {
-      setTargetPos({x:15+Math.random()*70,y:10+Math.random()*80});
-      setShowGoldenPaw(true);
+  const giveScore = useCallback((pts: number) => {
+    setMe(m => ({ ...m, score: m.score + pts }));
+    setOpp(o => ({ ...o, hp: Math.max(0, o.hp - pts) }));
+    showFlash("right", pts);
+    audio.ding();
+    showToast(`+${pts} pts 🐾`);
+  }, [showFlash, audio, showToast]);
+
+  const takeDmg = useCallback((pts: number) => {
+    setMe(m => ({ ...m, hp: Math.max(0, m.hp - pts) }));
+    showFlash("left", pts);
+    audio.buzz();
+    showToast(`-${pts} HP 💔`);
+  }, [showFlash, audio, showToast]);
+
+  // Broadcast over multiplayer channel
+  const broadcast = useCallback((ev: string, payload: object) => {
+    channelRef.current?.send({ type: "broadcast", event: ev, payload });
+  }, []);
+
+  // ── event loop ─────────────────────────────────────────────────────────────
+  const launchEvent = useCallback((ev?: DuelEvent) => {
+    if (phaseRef.current !== "battle") return;
+    clearEvTimers();
+    const next = ev ?? makeEvent();
+    setEvent(next);
+    currentEvRef.current = next;
+    setEvPct(100);
+    setSpamCount(0); spamRef.current = 0;
+    setPhraseVal(""); setHoldActive(false); setHoldPts(0); setShowPaw(false);
+    if (next.type === "target" || next.type === "hold") {
+      setPawPos({ x: 15 + Math.random() * 70, y: 10 + Math.random() * 80 });
+      setShowPaw(true);
     }
-    let elapsed=0; const step=80;
-    evInterval.current = setInterval(()=>{
-      elapsed+=step;
-      setEvPct(100-(elapsed/ev.duration)*100);
-      if (elapsed>=ev.duration) clearInterval(evInterval.current!);
-    },step);
-    evTimer.current = setTimeout(()=>{
-      if (phaseRef.current!=="battle") return;
-      setShowGoldenPaw(false);
+    let elapsed = 0;
+    evIntRef.current = setInterval(() => {
+      elapsed += 80;
+      setEvPct(100 - (elapsed / next.duration) * 100);
+      if (elapsed >= next.duration) clearInterval(evIntRef.current!);
+    }, 80);
+    evTimerRef.current = setTimeout(() => {
+      if (phaseRef.current !== "battle") return;
+      setShowPaw(false);
       setEvent(null);
-      setTimeout(()=>{ if (phaseRef.current==="battle") launchEvent(); },700);
-    },ev.duration);
-  },[clearEv]);
+      currentEvRef.current = null;
+      setTimeout(() => {
+        if (phaseRef.current === "battle") launchEvent();
+      }, 700);
+    }, next.duration);
+    // Host broadcasts event to guest
+    if (isHost) broadcast("new-event", { event: next });
+  }, [clearEvTimers, isHost, broadcast]);
 
-  const startBattle = useCallback(()=>{
+  // ── battle loop ────────────────────────────────────────────────────────────
+  const startBattle = useCallback(() => {
     setPhase("battle");
-    setBattleTime(60);
-    setMe(m=>({...m,cat:myCat,hp:100,score:0}));
-    setOpp(o=>({...o,hp:100,score:0}));
+    setBattleSecs(60);
+    setMe(m => ({ ...m, hp: 100, score: 0 }));
+    setOpp(o => ({ ...o, hp: 100, score: 0 }));
     launchEvent();
-    battleInterval.current = setInterval(()=>{
-      setBattleTime(t=>{
-        if (t<=1) { clearInterval(battleInterval.current!); clearEv(); setPhase("end"); return 0; }
-        if (Math.random()<0.20) {
-          setOpp(o=>({...o,score:o.score+Math.floor(4+Math.random()*7)}));
-          setMe(m=>({...m,hp:Math.max(0,m.hp-Math.floor(2+Math.random()*5))}));
+    battleIntRef.current = setInterval(() => {
+      setBattleSecs(t => {
+        if (t <= 1) {
+          clearInterval(battleIntRef.current!);
+          clearEvTimers();
+          setPhase("end");
+          if (isHost) broadcast("game-over", {});
+          return 0;
         }
-        return t-1;
+        // AI attacks only in solo mode
+        if (!isMulti && Math.random() < 0.18) {
+          const aiPts = Math.floor(3 + Math.random() * 6);
+          setOpp(o => ({ ...o, score: o.score + aiPts }));
+          setMe(m => ({ ...m, hp: Math.max(0, m.hp - aiPts) }));
+        }
+        return t - 1;
       });
-    },1000);
-  },[myCat,launchEvent,clearEv]);
+    }, 1000);
+  }, [launchEvent, clearEvTimers, isMulti, isHost, broadcast]);
 
-  // Check KO
-  useEffect(()=>{
-    if (phase!=="battle") return;
-    if (me.hp<=0) { clearEv(); clearInterval(battleInterval.current!); setPhase("end"); setWinner(opp); }
-    if (opp.hp<=0) { clearEv(); clearInterval(battleInterval.current!); setPhase("end"); setWinner(me); }
-  },[me.hp,opp.hp,phase,me,opp,clearEv]);
+  // ── KO detection ──────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (phase !== "battle") return;
+    if (me.hp <= 0 || opp.hp <= 0) {
+      clearEvTimers();
+      clearInterval(battleIntRef.current!);
+      setPhase("end");
+    }
+  }, [me.hp, opp.hp, phase, clearEvTimers]);
 
-  // End without KO
-  useEffect(()=>{
-    if (phase==="end"&&!winner) setWinner(me.score>=opp.score?me:opp);
-  },[phase,winner,me,opp]);
+  // ── countdown ─────────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (phase !== "countdown") return;
+    if (countdown <= 0) { startBattle(); return; }
+    audio.beep(countdown === 1 ? 1200 : 500);
+    const t = setTimeout(() => setCountdown(n => n - 1), 1000);
+    return () => clearTimeout(t);
+  }, [phase, countdown, startBattle, audio]);
 
-  // Countdown
-  useEffect(()=>{
-    if (phase!=="countdown") return;
-    if (cdCount<=0) { startBattle(); return; }
-    audio.beep(cdCount-1);
-    const t = setTimeout(()=>setCdCount(n=>n-1),1000);
-    return ()=>clearTimeout(t);
-  },[phase,cdCount,startBattle,audio]);
+  // ── cleanup ────────────────────────────────────────────────────────────────
+  useEffect(() => () => {
+    clearEvTimers();
+    clearInterval(battleIntRef.current!);
+    clearInterval(holdIntRef.current!);
+    if (channelRef.current && supabase) supabase.removeChannel(channelRef.current);
+  }, [clearEvTimers]);
 
-  // Cleanup
-  useEffect(()=>()=>{
-    clearEv();
-    if (battleInterval.current) clearInterval(battleInterval.current);
-    if (holdInterval.current) clearInterval(holdInterval.current);
-  },[clearEv]);
+  // ── Multiplayer: setup channel ─────────────────────────────────────────────
+  const setupChannel = useCallback((code: string, hosting: boolean) => {
+    if (!supabase) return;
+    if (channelRef.current) supabase.removeChannel(channelRef.current);
+    const ch = supabase.channel(`duel-${code}`);
+    channelRef.current = ch;
 
-  // --- Event handlers ---
+    ch.on("broadcast", { event: "guest-join" }, ({ payload }) => {
+      if (!hosting) return;
+      setOpp({ username: payload.username, cat: payload.cat, hp: 100, score: 0 });
+      // small delay then start countdown
+      setTimeout(() => {
+        ch.send({ type: "broadcast", event: "start", payload: {} });
+        setCountdown(3);
+        setPhase("countdown");
+      }, 500);
+    });
+
+    ch.on("broadcast", { event: "start" }, () => {
+      if (hosting) return;
+      setCountdown(3);
+      setPhase("countdown");
+    });
+
+    ch.on("broadcast", { event: "new-event" }, ({ payload }) => {
+      if (hosting) return; // host generates events itself
+      launchEvent(payload.event as DuelEvent);
+    });
+
+    ch.on("broadcast", { event: "opp-action" }, ({ payload }) => {
+      // Opponent completed an event — deal damage to me
+      setMe(m => ({ ...m, hp: Math.max(0, m.hp - payload.points) }));
+      setOpp(o => ({ ...o, score: o.score + payload.points }));
+      showFlash("left", payload.points);
+      audio.hit();
+    });
+
+    ch.on("broadcast", { event: "game-over" }, () => {
+      clearEvTimers();
+      clearInterval(battleIntRef.current!);
+      setPhase("end");
+    });
+
+    ch.subscribe();
+    return ch;
+  }, [launchEvent, clearEvTimers, showFlash, audio]);
+
+  // ── Lobby actions ──────────────────────────────────────────────────────────
+  function startSolo() {
+    setIsMulti(false);
+    setMe({ username: myUsername, cat: myCat, hp: 100, score: 0 });
+    setOpp({ username: "IA Ronron", cat: myCat === "grisou" ? "ronron" : "grisou", hp: 100, score: 0 });
+    setCountdown(3);
+    setPhase("countdown");
+  }
+
+  function createLobby() {
+    if (!supabase) return;
+    const code = makeCode();
+    setLobbyCode(code);
+    setIsHost(true);
+    setIsMulti(true);
+    setMe({ username: myUsername, cat: myCat, hp: 100, score: 0 });
+    setOpp({ username: "...", cat: "ronron", hp: 100, score: 0 });
+    setupChannel(code, true);
+    setPhase("waiting");
+  }
+
+  function joinLobby() {
+    const code = joinInput.trim().toUpperCase();
+    if (code.length < 4) { setJoinError("Code invalide."); return; }
+    if (!supabase) { setJoinError("Supabase non configuré."); return; }
+    setJoinError("");
+    setIsHost(false);
+    setIsMulti(true);
+    setMe({ username: myUsername, cat: myCat, hp: 100, score: 0 });
+    const ch = setupChannel(code, false);
+    // Announce ourselves to the host
+    setTimeout(() => {
+      ch?.send({ type: "broadcast", event: "guest-join", payload: { username: myUsername, cat: myCat } });
+    }, 400);
+    setPhase("joining");
+  }
+
+  function completedEvent(pts: number) {
+    giveScore(pts);
+    if (isMulti) broadcast("opp-action", { points: pts });
+    clearEvTimers();
+    setEvent(null);
+    setShowPaw(false);
+    setTimeout(() => { if (phaseRef.current === "battle") launchEvent(); }, 600);
+  }
+
+  // ── Event handlers ─────────────────────────────────────────────────────────
   function handleSpam() {
-    if (!event||event.type!=="spam") return;
-    const n = spamRef.current+1; spamRef.current=n; setSpamCount(n);
-    if (n>=5) { dealDmgToOpp(event.points); clearEv(); setEvent(null); setTimeout(()=>launchEvent(),600); }
+    const ev = currentEvRef.current;
+    if (!ev || ev.type !== "spam") return;
+    const n = spamRef.current + 1;
+    spamRef.current = n;
+    setSpamCount(n);
+    if (n >= 5) completedEvent(ev.points);
   }
 
-  function handlePhrase(v:string) {
-    if (!event||event.type!=="phrase") return;
-    setPhraseInput(v);
-    const target = event.label.replace("Tape : ","").toLowerCase().trim();
-    if (v.toLowerCase().trim()===target) {
-      dealDmgToOpp(event.points); clearEv(); setEvent(null); setPhraseInput("");
-      setTimeout(()=>launchEvent(),600);
-    }
+  function handlePhrase(v: string) {
+    const ev = currentEvRef.current;
+    if (!ev || ev.type !== "phrase") return;
+    setPhraseVal(v);
+    const target = ev.label.replace("Tape : ", "").toLowerCase().trim();
+    if (v.toLowerCase().trim() === target) completedEvent(ev.points);
   }
 
-  function handleGoldenPawDown() {
-    if (!event) return;
-    if (event.type==="target") {
-      dealDmgToOpp(event.points); setShowGoldenPaw(false); clearEv(); setEvent(null);
-      setTimeout(()=>launchEvent(),600);
-    } else if (event.type==="hold"&&!holdActive) {
+  function handlePawDown() {
+    const ev = currentEvRef.current;
+    if (!ev) return;
+    if (ev.type === "target") {
+      completedEvent(ev.points);
+    } else if (ev.type === "hold" && !holdActive) {
       setHoldActive(true);
-      let pts=0;
-      holdInterval.current = setInterval(()=>{
-        pts++; setHoldPts(pts);
-        if (pts>=event.points) {
-          clearInterval(holdInterval.current!); setHoldActive(false);
-          dealDmgToOpp(event.points); setShowGoldenPaw(false); clearEv(); setEvent(null);
-          setTimeout(()=>launchEvent(),600);
+      let pts = 0;
+      holdIntRef.current = setInterval(() => {
+        pts++;
+        setHoldPts(pts);
+        if (pts >= ev.points) {
+          clearInterval(holdIntRef.current!);
+          setHoldActive(false);
+          completedEvent(ev.points);
         }
-      },100);
+      }, 100);
     }
   }
 
-  function handleGoldenPawUp() {
-    if (!holdActive||!event||event.type!=="hold") return;
-    clearInterval(holdInterval.current!); setHoldActive(false);
-    if (holdPts>0) dealDmgToOpp(Math.floor((holdPts/event.points)*event.points));
+  function handlePawUp() {
+    const ev = currentEvRef.current;
+    if (!holdActive || !ev || ev.type !== "hold") return;
+    clearInterval(holdIntRef.current!);
+    setHoldActive(false);
+    if (holdPts > 0) completedEvent(Math.max(1, Math.floor((holdPts / ev.points) * ev.points)));
     else takeDmg(5);
-    setShowGoldenPaw(false); clearEv(); setEvent(null);
-    setTimeout(()=>launchEvent(),600);
+    setShowPaw(false);
+    clearEvTimers();
+    setEvent(null);
+    setTimeout(() => { if (phaseRef.current === "battle") launchEvent(); }, 600);
   }
 
   function handleMainBtn() {
-    if (!event) return;
-    if (event.type==="bait") { takeDmg(15); clearEv(); setEvent(null); setTimeout(()=>launchEvent(),700); return; }
-    if (event.type==="spam") handleSpam();
+    const ev = currentEvRef.current;
+    if (!ev) return;
+    if (ev.type === "bait") {
+      takeDmg(15);
+      clearEvTimers(); setEvent(null);
+      setTimeout(() => { if (phaseRef.current === "battle") launchEvent(); }, 700);
+    } else if (ev.type === "spam") {
+      handleSpam();
+    }
   }
 
-  const meHpPct = me.hp;
-  const oppHpPct = opp.hp;
+  // ── Copy code ──────────────────────────────────────────────────────────────
+  function copyCode() {
+    navigator.clipboard.writeText(lobbyCode).then(() => {
+      setCopied(true); setTimeout(() => setCopied(false), 1800);
+    });
+  }
 
-  // ===== LOBBY =====
-  if (phase==="lobby") return (
-    <main className="duel-shell">
-      <div className="relative z-10 flex h-full flex-col items-center justify-center px-4 gap-6 overflow-y-auto py-8">
-        <div className="text-center">
-          <div className="text-5xl mb-2">⚔️</div>
-          <h1 className="text-4xl sm:text-6xl font-black"
-            style={{background:"linear-gradient(90deg,#ff6644,#ffcc00,#5599ff)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>
-            MODE DUEL
-          </h1>
-          <p className="text-sm font-bold opacity-50 mt-1">Combats de chats épiques</p>
-        </div>
+  // ── Derived ────────────────────────────────────────────────────────────────
+  const winner = phase === "end" ? (me.score >= opp.score ? me : opp) : null;
+  const iWin = winner?.username === myUsername;
 
-        <div className="grid sm:grid-cols-2 gap-3 w-full max-w-lg">
-          {(["grisou","ronron"] as const).map(id=>(
-            <button key={id} onClick={()=>setMyCat(id)}
-              className={`duel-panel rounded-[24px] p-4 flex flex-col items-center gap-2 transition border-2 ${myCat===id?"border-orange-400":"border-transparent hover:border-white/20"}`}>
-              <div className="overflow-hidden rounded-[18px] w-24 h-24 shrink-0">
-                <Image src={CAT_SRC[id]} alt={id} width={200} height={200} className="w-full h-full object-cover"/>
-              </div>
-              <p className="font-black capitalize">{id}</p>
-              <p className="text-xs opacity-50">{id==="grisou"?"Moelleux cosmique":"Squeechie solaire"}</p>
-              {myCat===id&&<span className="text-xs font-black px-3 py-1 rounded-full" style={{background:"rgba(255,140,50,0.3)",color:"#ffaa66"}}>✓ Sélectionné</span>}
-            </button>
-          ))}
-        </div>
+  // ── HP bar color ───────────────────────────────────────────────────────────
+  function hpColor(pct: number, dir: "ltr" | "rtl" = "ltr") {
+    const c = pct > 50 ? "#4ade80,#22c55e" : pct > 25 ? "#facc15,#f97316" : "#ef4444,#dc2626";
+    return dir === "ltr" ? `linear-gradient(90deg,${c})` : `linear-gradient(270deg,${c})`;
+  }
+  function hpGlow(pct: number) {
+    return pct > 50 ? "rgba(74,222,128,0.5)" : pct > 25 ? "rgba(250,204,21,0.5)" : "rgba(239,68,68,0.7)";
+  }
 
-        <div className="grid gap-3 w-full max-w-lg">
-          <button onClick={()=>{setWinner(null);setCdCount(3);setPhase("countdown");}} className="duel-btn rounded-[20px] px-6 py-4 text-lg w-full flex items-center justify-center gap-2">
-            <Sword className="h-5 w-5"/>Duel vs IA
-          </button>
-          {isSupabaseConfigured&&(
-            <div className="duel-panel rounded-[20px] p-4 flex flex-col gap-2">
-              <p className="text-[10px] font-black uppercase tracking-widest opacity-40 mb-1">Multijoueur (bientôt)</p>
-              <div className="grid grid-cols-2 gap-2 opacity-40 pointer-events-none">
-                <button className="duel-btn-blue rounded-[16px] px-4 py-3 text-sm flex items-center justify-center gap-1.5">
-                  <Trophy className="h-4 w-4"/>Créer
+  // ═══════════════════════════════════════════════════════════════════════════
+  // RENDER
+  // ═══════════════════════════════════════════════════════════════════════════
+  return (
+    <main className="duel-shell" style={{ fontFamily: "var(--font-geist-sans, system-ui, sans-serif)" }}>
+      <div className="relative z-10 w-full h-full flex flex-col">
+
+        {/* ═══════════ LOBBY ═══════════ */}
+        {phase === "lobby" && (
+          <div className="flex-1 flex flex-col items-center justify-center px-4 py-6 gap-5 overflow-y-auto">
+            {/* Header */}
+            <div className="text-center">
+              <div style={{ fontSize: "3rem", lineHeight: 1 }}>⚔️</div>
+              <h1 style={{
+                fontSize: "clamp(2rem,8vw,4rem)", fontWeight: 900, lineHeight: 1,
+                background: "linear-gradient(90deg,#ff6644,#ffcc00,#5599ff)",
+                WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
+              }}>MODE DUEL</h1>
+              <p style={{ fontSize: "0.8rem", opacity: 0.5, fontWeight: 700, marginTop: 4 }}>
+                Combats de chats épiques • Multijoueur ou vs IA
+              </p>
+            </div>
+
+            {/* Cat picker */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, width: "100%", maxWidth: 420 }}>
+              {(["grisou", "ronron"] as const).map(id => (
+                <button key={id} onClick={() => setMyCat(id)}
+                  style={{
+                    background: myCat === id ? "rgba(255,140,50,0.12)" : "rgba(8,4,14,0.88)",
+                    border: `2px solid ${myCat === id ? "#ff8c32" : "rgba(255,255,255,0.08)"}`,
+                    borderRadius: 20, padding: 12, cursor: "pointer", transition: "all 0.15s",
+                    display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
+                    color: "#fef0d0",
+                  }}>
+                  <div style={{ width: 72, height: 72, borderRadius: 14, overflow: "hidden" }}>
+                    <Image src={CAT_SRC[id]} alt={id} width={144} height={144} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  </div>
+                  <span style={{ fontWeight: 900 }}>{CAT_INFO[id].name}</span>
+                  <span style={{ fontSize: "0.68rem", opacity: 0.5 }}>{CAT_INFO[id].vibe}</span>
+                  {myCat === id && (
+                    <span style={{ fontSize: "0.7rem", fontWeight: 900, background: "rgba(255,140,50,0.3)", color: "#ffaa66", borderRadius: 20, padding: "2px 10px" }}>✓ Sélectionné</span>
+                  )}
                 </button>
-                <button className="duel-btn rounded-[16px] px-4 py-3 text-sm flex items-center justify-center gap-1.5">
-                  <Zap className="h-4 w-4"/>Rejoindre
-                </button>
-              </div>
+              ))}
             </div>
-          )}
-          <Link href="/" className="duel-panel rounded-[20px] px-6 py-3.5 text-sm font-black flex items-center justify-center gap-2 hover:opacity-80 transition">
-            <ArrowLeft className="h-4 w-4"/>Retour à la ferme
-          </Link>
-        </div>
-      </div>
-    </main>
-  );
 
-  // ===== COUNTDOWN =====
-  if (phase==="countdown") return (
-    <main className="duel-shell">
-      <div className="relative z-10 flex-1 flex h-full flex-col items-center justify-center gap-6">
-        <p className="text-sm font-black uppercase tracking-widest opacity-50">Prépare-toi !</p>
-        <div className="text-[120px] sm:text-[160px] font-black leading-none tabular-nums"
-          style={{background:"linear-gradient(180deg,#ffcc00,#ff6644)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",filter:"drop-shadow(0 0 40px rgba(255,150,50,0.5))",animation:"glowPulse 0.6s ease-in-out infinite"}}>
-          {cdCount===0?"GO!":cdCount}
-        </div>
-        {cdCount===0&&<p className="text-2xl font-black" style={{color:"#ff6644"}}>MIAOU TURBO ! 🐾</p>}
-      </div>
-    </main>
-  );
-
-  // ===== BATTLE =====
-  if (phase==="battle") return (
-    <main className="duel-shell">
-      <div className="relative z-10 flex h-full flex-col">
-
-        {/* HP bars */}
-        <div className="shrink-0 px-3 pt-3 pb-2">
-          <div className="duel-panel rounded-[20px] p-3">
-            <div className="grid grid-cols-[1fr_56px_1fr] items-center gap-2">
-
-              {/* Me */}
-              <div>
-                <div className="flex items-center gap-2 mb-1.5">
-                  <div className="w-8 h-8 overflow-hidden rounded-xl shrink-0">
-                    <Image src={CAT_SRC[me.cat]} alt={me.username} width={64} height={64} className="w-full h-full object-cover"/>
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-xs font-black truncate">{me.username}</p>
-                    <p className="text-[10px] font-bold opacity-50">{me.score} pts</p>
-                  </div>
-                </div>
-                <div className="h-3 rounded-full overflow-hidden" style={{background:"rgba(255,255,255,0.1)"}}>
-                  <div className="h-full rounded-full transition-all duration-300"
-                    style={{width:`${meHpPct}%`,background:meHpPct>50?"linear-gradient(90deg,#4ade80,#22c55e)":meHpPct>25?"linear-gradient(90deg,#facc15,#f97316)":"linear-gradient(90deg,#ef4444,#dc2626)",boxShadow:`0 0 8px ${meHpPct>50?"rgba(74,222,128,0.5)":meHpPct>25?"rgba(250,204,21,0.5)":"rgba(239,68,68,0.7)"}`}}>
-                  </div>
-                </div>
-                <p className="text-[10px] font-black mt-0.5 opacity-60">{me.hp} HP</p>
-              </div>
-
-              {/* Timer */}
-              <div className="flex flex-col items-center gap-0.5">
-                <Timer className="h-3.5 w-3.5 opacity-40"/>
-                <span className="text-xl font-black tabular-nums" style={{color:battleTime<=10?"#ef4444":battleTime<=20?"#f97316":"#fef0d0"}}>{battleTime}</span>
-                <span className="text-[9px] uppercase opacity-40 font-black">sec</span>
-              </div>
-
-              {/* Opp */}
-              <div>
-                <div className="flex items-center gap-2 mb-1.5 flex-row-reverse">
-                  <div className="w-8 h-8 overflow-hidden rounded-xl shrink-0">
-                    <Image src={CAT_SRC[opp.cat]} alt={opp.username} width={64} height={64} className="w-full h-full object-cover"/>
-                  </div>
-                  <div className="min-w-0 text-right">
-                    <p className="text-xs font-black truncate">{opp.username}</p>
-                    <p className="text-[10px] font-bold opacity-50">{opp.score} pts</p>
-                  </div>
-                </div>
-                <div className="h-3 rounded-full overflow-hidden" style={{background:"rgba(255,255,255,0.1)"}}>
-                  <div className="h-full rounded-full transition-all duration-300 ml-auto"
-                    style={{width:`${oppHpPct}%`,background:oppHpPct>50?"linear-gradient(270deg,#60a5fa,#3b82f6)":oppHpPct>25?"linear-gradient(270deg,#facc15,#f97316)":"linear-gradient(270deg,#ef4444,#dc2626)",boxShadow:`0 0 8px ${oppHpPct>50?"rgba(96,165,250,0.5)":oppHpPct>25?"rgba(250,204,21,0.5)":"rgba(239,68,68,0.7)"}`}}>
-                  </div>
-                </div>
-                <p className="text-[10px] font-black mt-0.5 opacity-60 text-right">{opp.hp} HP</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Battle area */}
-        <div className="flex-1 flex flex-col items-center justify-center px-3 pb-3 gap-3 min-h-0 overflow-hidden relative">
-
-          {/* Round message */}
-          {roundMsg&&(
-            <div className="absolute top-8 left-1/2 -translate-x-1/2 z-30 pointer-events-none rounded-full px-5 py-2 text-xl font-black"
-              style={{background:roundMsg.startsWith("+")?"rgba(74,222,128,0.9)":"rgba(239,68,68,0.9)",color:"#fff",animation:"floatUp 900ms ease forwards",whiteSpace:"nowrap"}}>
-              {roundMsg}
-            </div>
-          )}
-
-          {/* Damage flash */}
-          {dmg&&(
-            <div className={`absolute ${dmg.side==="left"?"left-3":"right-3"} top-1/3 z-30 pointer-events-none rounded-2xl px-3 py-2 text-lg font-black`}
-              style={{background:"rgba(239,68,68,0.9)",color:"#fff",animation:"floatUp 600ms ease forwards"}}>
-              -{dmg.val}💔
-            </div>
-          )}
-
-          {/* Event card */}
-          {event&&(
-            <div className="w-full max-w-md shrink-0">
-              <div className="duel-card rounded-[20px] p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-[10px] font-black uppercase tracking-widest opacity-50">
-                    {event.type==="spam"&&"⚡ SPAM"}
-                    {event.type==="phrase"&&"⌨️ PHRASE"}
-                    {event.type==="target"&&"🎯 CIBLE"}
-                    {event.type==="hold"&&"💪 MAINTIEN"}
-                    {event.type==="bait"&&"😈 PIÈGE"}
-                  </span>
-                  <span className="ml-auto text-xs font-black" style={{color:"#ffcc00"}}>+{event.points} pts</span>
-                </div>
-                <p className="text-lg font-black mb-3">{event.label}</p>
-                <div className="h-2 rounded-full overflow-hidden" style={{background:"rgba(255,255,255,0.10)"}}>
-                  <div className="h-full rounded-full"
-                    style={{width:`${evPct}%`,background:`linear-gradient(90deg,${evPct>50?"#4ade80":evPct>25?"#facc15":"#ef4444"},#ff6644)`,transition:"width 0.08s linear"}}/>
-                </div>
-                {event.type==="spam"&&<p className="text-xs opacity-50 mt-1">{spamCount}/5 taps</p>}
-                {event.type==="hold"&&holdActive&&<p className="text-xs opacity-50 mt-1">{holdPts}/{event.points}</p>}
-              </div>
-            </div>
-          )}
-
-          {/* Phrase input */}
-          {event?.type==="phrase"&&(
-            <div className="w-full max-w-md shrink-0">
-              <input autoFocus value={phraseInput} onChange={e=>handlePhrase(e.target.value)}
-                placeholder="Tape ici..."
-                className="w-full h-12 rounded-[16px] border px-4 text-base font-black outline-none"
-                style={{background:"rgba(255,255,255,0.08)",color:"#fef0d0",borderColor:"rgba(255,140,50,0.3)"}}
-              />
-            </div>
-          )}
-
-          {/* Golden paw */}
-          {showGoldenPaw&&(
-            <div className="relative w-full max-w-md shrink-0" style={{height:"120px"}}>
-              <button
-                className="absolute text-5xl"
-                style={{left:`${targetPos.x}%`,top:`${targetPos.y}%`,transform:"translate(-50%,-50%)",filter:"drop-shadow(0 0 18px rgba(255,200,50,0.9))",animation:"glowPulse 0.7s ease-in-out infinite",touchAction:"none"}}
-                onPointerDown={handleGoldenPawDown}
-                onPointerUp={handleGoldenPawUp}
-                onPointerLeave={handleGoldenPawUp}
-              >
-                {event?.type==="hold"?(holdActive?"✋":"🖐️"):"🌟"}
+            {/* Actions */}
+            <div style={{ display: "grid", gap: 10, width: "100%", maxWidth: 420 }}>
+              {/* Solo */}
+              <button onClick={startSolo} className="duel-btn" style={{ borderRadius: 18, padding: "14px 20px", fontSize: "1rem", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                <Sword size={18} /> Duel vs IA
               </button>
-            </div>
-          )}
 
-          {/* Main cat button */}
-          {event&&event.type!=="phrase"&&event.type!=="target"&&event.type!=="hold"&&(
-            <button
-              onPointerDown={handleMainBtn}
-              className="relative rounded-full shrink-0"
-              style={{width:"min(52vw,260px)",aspectRatio:"1/1",touchAction:"none"}}>
-              <div className="absolute inset-0 rounded-full" style={{background:"radial-gradient(circle,rgba(255,140,50,0.30) 0%,transparent 70%)",animation:"glowPulse 1.6s ease-in-out infinite"}}/>
-              <Image src={CAT_SRC[me.cat]} alt="click" width={520} height={520}
-                className="relative z-10 w-full h-full object-cover rounded-full"
-                style={{boxShadow:"0 0 0 3px rgba(255,140,50,0.5), 0 16px 50px rgba(0,0,0,0.6)"}}
-                draggable={false}
-              />
-              {event.type==="bait"&&(
-                <div className="absolute inset-0 rounded-full grid place-items-center z-20"
-                  style={{background:"rgba(239,68,68,0.80)",fontSize:"3.5rem"}}>
-                  🚫
+              {/* Multiplayer section */}
+              {supabase ? (
+                <div className="duel-panel" style={{ borderRadius: 18, padding: 14, display: "flex", flexDirection: "column", gap: 10 }}>
+                  <p style={{ fontSize: "0.68rem", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.15em", opacity: 0.45, margin: 0 }}>
+                    Multijoueur en ligne
+                  </p>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                    <button onClick={createLobby} className="duel-btn-blue" style={{ borderRadius: 14, padding: "12px 8px", fontSize: "0.88rem", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                      <Trophy size={16} /> Créer
+                    </button>
+                    <button onClick={() => setPhase("joining")} className="duel-btn" style={{ borderRadius: 14, padding: "12px 8px", fontSize: "0.88rem", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                      <Zap size={16} /> Rejoindre
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="duel-panel" style={{ borderRadius: 14, padding: "10px 14px", opacity: 0.45 }}>
+                  <p style={{ fontSize: "0.72rem", margin: 0, fontWeight: 700 }}>Multijoueur disponible avec Supabase configuré.</p>
                 </div>
               )}
-            </button>
-          )}
-        </div>
-      </div>
-    </main>
-  );
 
-  // ===== END =====
-  return (
-    <main className="duel-shell">
-      <div className="relative z-10 flex h-full flex-col items-center justify-center px-4 gap-6 overflow-y-auto py-8">
-        <div className="text-center">
-          <div className="text-6xl mb-3">{winner?.id===me.id?"🏆":"😿"}</div>
-          <h2 className="text-4xl sm:text-5xl font-black"
-            style={{background:winner?.id===me.id?"linear-gradient(90deg,#ffcc00,#ff6644)":"linear-gradient(90deg,#ef4444,#cc2200)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>
-            {winner?.id===me.id?"Victoire !":"Défaite..."}
-          </h2>
-          <p className="text-sm font-bold opacity-50 mt-1">{winner?.username} remporte le duel</p>
-        </div>
-
-        <div className="duel-panel rounded-[24px] p-5 w-full max-w-sm grid grid-cols-2 gap-4">
-          {[me,opp].map(f=>(
-            <div key={f.id} className="flex flex-col items-center gap-2">
-              <div className="w-16 h-16 overflow-hidden rounded-[18px]">
-                <Image src={CAT_SRC[f.cat]} alt={f.username} width={128} height={128} className="w-full h-full object-cover"/>
-              </div>
-              <p className="text-sm font-black">{f.username}</p>
-              <p className="text-xs opacity-40">{f.hp} HP</p>
-              <p className="text-2xl font-black" style={{color:"#ffcc00"}}>{f.score}</p>
-              <p className="text-[10px] uppercase opacity-40 font-black">pts</p>
-              {winner?.id===f.id&&<span className="text-lg">🏆</span>}
+              {/* Back */}
+              <Link href="/" className="duel-panel"
+                style={{ borderRadius: 14, padding: "12px 20px", fontSize: "0.88rem", fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, color: "#fef0d0", textDecoration: "none" }}>
+                <ArrowLeft size={16} /> Retour à la ferme
+              </Link>
             </div>
-          ))}
-        </div>
+          </div>
+        )}
 
-        <div className="grid gap-2 w-full max-w-sm">
-          <button onClick={()=>{setWinner(null);setCdCount(3);setPhase("countdown");}} className="duel-btn rounded-[20px] px-6 py-4 text-base w-full flex items-center justify-center gap-2">
-            <Flame className="h-5 w-5"/>Revanche !
-          </button>
-          <button onClick={()=>{setWinner(null);setPhase("lobby");}} className="duel-panel rounded-[20px] px-6 py-3.5 text-sm font-black flex items-center justify-center gap-2 hover:opacity-80 transition">
-            <ArrowLeft className="h-4 w-4"/>Retour au lobby
-          </button>
-          <Link href="/" className="duel-panel rounded-[20px] px-6 py-3.5 text-sm font-black flex items-center justify-center gap-2 hover:opacity-80 transition">
-            <ArrowLeft className="h-4 w-4"/>Retour à la ferme
-          </Link>
-        </div>
+        {/* ═══════════ WAITING (host created lobby) ═══════════ */}
+        {phase === "waiting" && (
+          <div className="flex-1 flex flex-col items-center justify-center px-4 gap-6">
+            <div style={{ textAlign: "center" }}>
+              <div style={{ fontSize: "3rem" }}>🐱</div>
+              <h2 style={{ fontSize: "1.6rem", fontWeight: 900, margin: "8px 0 4px" }}>En attente d'un adversaire</h2>
+              <p style={{ opacity: 0.5, fontSize: "0.82rem", margin: 0 }}>Envoie ce code à ton ami</p>
+            </div>
+            <div className="duel-panel" style={{ borderRadius: 20, padding: 20, textAlign: "center", width: "100%", maxWidth: 340 }}>
+              <p style={{ fontSize: "0.7rem", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.2em", opacity: 0.5, margin: "0 0 8px" }}>Code du lobby</p>
+              <div style={{ fontSize: "3rem", fontWeight: 900, letterSpacing: "0.15em", background: "linear-gradient(90deg,#ff8c32,#ffcc00)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", marginBottom: 12 }}>
+                {lobbyCode}
+              </div>
+              <button onClick={copyCode} className="duel-btn-blue"
+                style={{ borderRadius: 12, padding: "10px 20px", fontSize: "0.88rem", display: "inline-flex", alignItems: "center", gap: 6 }}>
+                <Copy size={14} /> {copied ? "Copié !" : "Copier"}
+              </button>
+            </div>
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#4ade80", animation: "glowPulse 1s ease-in-out infinite" }} />
+              <p style={{ opacity: 0.6, fontSize: "0.82rem", margin: 0 }}>En attente de connexion...</p>
+            </div>
+            <button onClick={() => { setPhase("lobby"); if (supabase && channelRef.current) supabase.removeChannel(channelRef.current); }}
+              className="duel-panel"
+              style={{ borderRadius: 12, padding: "10px 20px", fontSize: "0.82rem", fontWeight: 900, color: "#fef0d0", cursor: "pointer" }}>
+              Annuler
+            </button>
+          </div>
+        )}
+
+        {/* ═══════════ JOINING ═══════════ */}
+        {phase === "joining" && !isMulti && (
+          <div className="flex-1 flex flex-col items-center justify-center px-4 gap-5">
+            <div style={{ textAlign: "center" }}>
+              <div style={{ fontSize: "2.5rem" }}>🔑</div>
+              <h2 style={{ fontSize: "1.5rem", fontWeight: 900, margin: "8px 0 4px" }}>Rejoindre un duel</h2>
+            </div>
+            <div className="duel-panel" style={{ borderRadius: 20, padding: 20, width: "100%", maxWidth: 340, display: "flex", flexDirection: "column", gap: 10 }}>
+              <input
+                value={joinInput}
+                onChange={e => setJoinInput(e.target.value.toUpperCase())}
+                onKeyDown={e => e.key === "Enter" && joinLobby()}
+                placeholder="CODE DU LOBBY"
+                maxLength={8}
+                style={{
+                  height: 52, background: "rgba(255,255,255,0.07)", color: "#fef0d0",
+                  border: "1px solid rgba(255,140,50,0.3)", borderRadius: 14, padding: "0 16px",
+                  fontSize: "1.4rem", fontWeight: 900, letterSpacing: "0.15em",
+                  textAlign: "center", outline: "none", fontFamily: "inherit",
+                }}
+              />
+              {joinError && <p style={{ color: "#ff7777", fontSize: "0.82rem", margin: 0, textAlign: "center" }}>{joinError}</p>}
+              <button onClick={joinLobby} className="duel-btn" style={{ borderRadius: 14, padding: "13px", fontSize: "1rem", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                <Zap size={16} /> Rejoindre
+              </button>
+            </div>
+            <button onClick={() => setPhase("lobby")} className="duel-panel"
+              style={{ borderRadius: 12, padding: "10px 20px", fontSize: "0.82rem", fontWeight: 900, color: "#fef0d0", cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+              <ArrowLeft size={14} /> Retour
+            </button>
+          </div>
+        )}
+
+        {/* ═══════════ JOINING (waiting for host after sending code) ═══════════ */}
+        {phase === "joining" && isMulti && (
+          <div className="flex-1 flex flex-col items-center justify-center px-4 gap-6">
+            <div style={{ fontSize: "3rem" }}>🐱</div>
+            <h2 style={{ fontSize: "1.5rem", fontWeight: 900, textAlign: "center" }}>Connexion au lobby...</h2>
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#5599ff", animation: "glowPulse 1s ease-in-out infinite" }} />
+              <p style={{ opacity: 0.6, fontSize: "0.82rem", margin: 0 }}>En attente de l'hôte...</p>
+            </div>
+            <button onClick={() => { setIsMulti(false); setPhase("lobby"); if (supabase && channelRef.current) supabase.removeChannel(channelRef.current); }}
+              className="duel-panel"
+              style={{ borderRadius: 12, padding: "10px 20px", fontSize: "0.82rem", fontWeight: 900, color: "#fef0d0", cursor: "pointer" }}>
+              Annuler
+            </button>
+          </div>
+        )}
+
+        {/* ═══════════ COUNTDOWN ═══════════ */}
+        {phase === "countdown" && (
+          <div className="flex-1 flex flex-col items-center justify-center gap-4">
+            {isMulti && opp.username !== "..." && (
+              <div className="duel-panel" style={{ borderRadius: 16, padding: "8px 20px", fontSize: "0.85rem", fontWeight: 900 }}>
+                {myUsername} vs {opp.username}
+              </div>
+            )}
+            <p style={{ opacity: 0.5, fontWeight: 900, fontSize: "0.85rem", textTransform: "uppercase", letterSpacing: "0.15em" }}>Prépare-toi !</p>
+            <div style={{
+              fontSize: "clamp(6rem,25vw,10rem)", fontWeight: 900, lineHeight: 1,
+              background: "linear-gradient(180deg,#ffcc00,#ff6644)",
+              WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
+              filter: "drop-shadow(0 0 40px rgba(255,150,50,0.5))",
+              animation: "glowPulse 0.6s ease-in-out infinite",
+            }}>
+              {countdown === 0 ? "GO!" : countdown}
+            </div>
+            {countdown === 0 && (
+              <p style={{ fontSize: "1.4rem", fontWeight: 900, color: "#ff6644" }}>MIAOU TURBO ! 🐾</p>
+            )}
+          </div>
+        )}
+
+        {/* ═══════════ BATTLE ═══════════ */}
+        {phase === "battle" && (
+          <>
+            {/* HP bars header */}
+            <div style={{ padding: "10px 12px 6px", flexShrink: 0 }}>
+              <div className="duel-panel" style={{ borderRadius: 18, padding: "10px 12px" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 52px 1fr", alignItems: "center", gap: 8 }}>
+                  {/* Me */}
+                  <div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                      <div style={{ width: 32, height: 32, borderRadius: 10, overflow: "hidden", flexShrink: 0 }}>
+                        <Image src={CAT_SRC[me.cat]} alt={me.username} width={64} height={64} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      </div>
+                      <div style={{ minWidth: 0 }}>
+                        <p style={{ fontWeight: 900, fontSize: "0.78rem", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{me.username}</p>
+                        <p style={{ fontSize: "0.65rem", opacity: 0.5, margin: 0 }}>{me.score} pts</p>
+                      </div>
+                    </div>
+                    <div style={{ height: 10, borderRadius: 999, overflow: "hidden", background: "rgba(255,255,255,0.08)" }}>
+                      <div style={{ height: "100%", borderRadius: 999, width: `${me.hp}%`, background: hpColor(me.hp), boxShadow: `0 0 8px ${hpGlow(me.hp)}`, transition: "width 0.3s" }} />
+                    </div>
+                    <p style={{ fontSize: "0.65rem", opacity: 0.55, fontWeight: 900, marginTop: 2 }}>{me.hp} HP</p>
+                  </div>
+
+                  {/* Timer */}
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
+                    <Timer size={13} style={{ opacity: 0.4 }} />
+                    <span style={{ fontSize: "1.4rem", fontWeight: 900, color: battleSecs <= 10 ? "#ef4444" : battleSecs <= 20 ? "#f97316" : "#fef0d0", fontVariantNumeric: "tabular-nums" }}>
+                      {battleSecs}
+                    </span>
+                    <span style={{ fontSize: "0.6rem", fontWeight: 900, textTransform: "uppercase", opacity: 0.35 }}>sec</span>
+                  </div>
+
+                  {/* Opponent */}
+                  <div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, flexDirection: "row-reverse" }}>
+                      <div style={{ width: 32, height: 32, borderRadius: 10, overflow: "hidden", flexShrink: 0 }}>
+                        <Image src={CAT_SRC[opp.cat]} alt={opp.username} width={64} height={64} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      </div>
+                      <div style={{ minWidth: 0, textAlign: "right" }}>
+                        <p style={{ fontWeight: 900, fontSize: "0.78rem", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{opp.username}</p>
+                        <p style={{ fontSize: "0.65rem", opacity: 0.5, margin: 0 }}>{opp.score} pts</p>
+                      </div>
+                    </div>
+                    <div style={{ height: 10, borderRadius: 999, overflow: "hidden", background: "rgba(255,255,255,0.08)" }}>
+                      <div style={{ height: "100%", borderRadius: 999, width: `${opp.hp}%`, background: hpColor(opp.hp, "rtl"), boxShadow: `0 0 8px ${hpGlow(opp.hp)}`, transition: "width 0.3s", marginLeft: "auto" }} />
+                    </div>
+                    <p style={{ fontSize: "0.65rem", opacity: 0.55, fontWeight: 900, marginTop: 2, textAlign: "right" }}>{opp.hp} HP</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Battle arena */}
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 12px 12px", gap: 12, minHeight: 0, overflow: "hidden", position: "relative" }}>
+              {/* Toast */}
+              {toast && (
+                <div style={{
+                  position: "absolute", top: 8, left: "50%", transform: "translateX(-50%)", zIndex: 30,
+                  background: toast.startsWith("+") ? "rgba(74,222,128,0.9)" : "rgba(239,68,68,0.9)",
+                  color: "#fff", borderRadius: 999, padding: "8px 20px", fontSize: "1.1rem", fontWeight: 900,
+                  animation: "floatUp 950ms ease forwards", whiteSpace: "nowrap",
+                }}>
+                  {toast}
+                </div>
+              )}
+
+              {/* Damage flash */}
+              {flash && (
+                <div style={{
+                  position: "absolute", [flash.side === "left" ? "left" : "right"]: 12, top: "35%",
+                  zIndex: 30, background: "rgba(239,68,68,0.9)", color: "#fff",
+                  borderRadius: 14, padding: "6px 14px", fontSize: "1.1rem", fontWeight: 900,
+                  animation: "floatUp 650ms ease forwards",
+                }}>
+                  -{flash.val} 💔
+                </div>
+              )}
+
+              {/* Event card */}
+              {event && (
+                <div className="duel-card" style={{ borderRadius: 18, padding: "12px 14px", width: "100%", maxWidth: 420 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                    <span style={{ fontSize: "0.68rem", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.15em", opacity: 0.5 }}>
+                      {event.type === "spam" && "⚡ SPAM"}
+                      {event.type === "phrase" && "⌨️ PHRASE"}
+                      {event.type === "target" && "🎯 CIBLE"}
+                      {event.type === "hold" && "💪 MAINTIEN"}
+                      {event.type === "bait" && "😈 PIÈGE"}
+                    </span>
+                    <span style={{ marginLeft: "auto", fontSize: "0.78rem", fontWeight: 900, color: "#ffcc00" }}>+{event.points} pts</span>
+                  </div>
+                  <p style={{ fontWeight: 900, fontSize: "1.05rem", margin: "0 0 10px" }}>{event.label}</p>
+                  <div style={{ height: 6, borderRadius: 999, overflow: "hidden", background: "rgba(255,255,255,0.1)" }}>
+                    <div style={{
+                      height: "100%", borderRadius: 999,
+                      width: `${evPct}%`,
+                      background: `linear-gradient(90deg,${evPct > 50 ? "#4ade80" : evPct > 25 ? "#facc15" : "#ef4444"},#ff6644)`,
+                      transition: "width 0.08s linear",
+                    }} />
+                  </div>
+                  {event.type === "spam" && <p style={{ fontSize: "0.72rem", opacity: 0.5, marginTop: 4 }}>{spamCount}/5 taps</p>}
+                  {event.type === "hold" && holdActive && <p style={{ fontSize: "0.72rem", opacity: 0.5, marginTop: 4 }}>{holdPts}/{event.points}</p>}
+                </div>
+              )}
+
+              {/* Phrase input */}
+              {event?.type === "phrase" && (
+                <input
+                  autoFocus value={phraseVal} onChange={e => handlePhrase(e.target.value)}
+                  placeholder="Tape ici..."
+                  style={{
+                    width: "100%", maxWidth: 420, height: 50,
+                    background: "rgba(255,255,255,0.07)", color: "#fef0d0",
+                    border: "1px solid rgba(255,140,50,0.3)", borderRadius: 14, padding: "0 16px",
+                    fontSize: "1rem", fontWeight: 900, outline: "none", fontFamily: "inherit",
+                    boxSizing: "border-box",
+                  }}
+                />
+              )}
+
+              {/* Golden paw (target / hold) */}
+              {showPaw && (
+                <div style={{ position: "relative", width: "100%", maxWidth: 420, height: 130 }}>
+                  <button
+                    onPointerDown={handlePawDown}
+                    onPointerUp={handlePawUp}
+                    onPointerLeave={handlePawUp}
+                    style={{
+                      position: "absolute",
+                      left: `${pawPos.x}%`, top: `${pawPos.y}%`,
+                      transform: "translate(-50%,-50%)",
+                      fontSize: "3.2rem", background: "none", border: "none", cursor: "pointer",
+                      filter: "drop-shadow(0 0 16px rgba(255,200,50,0.9))",
+                      animation: "glowPulse 0.7s ease-in-out infinite",
+                      touchAction: "none",
+                    }}>
+                    {event?.type === "hold" ? (holdActive ? "✋" : "🖐️") : "🌟"}
+                  </button>
+                </div>
+              )}
+
+              {/* Main button (spam / bait) */}
+              {event && event.type !== "phrase" && event.type !== "target" && event.type !== "hold" && (
+                <button
+                  onPointerDown={handleMainBtn}
+                  style={{
+                    position: "relative",
+                    width: "min(52vw, 240px)", aspectRatio: "1/1",
+                    borderRadius: "50%", border: "none", cursor: "pointer",
+                    background: "none", touchAction: "none", flexShrink: 0,
+                  }}>
+                  <div style={{
+                    position: "absolute", inset: 0, borderRadius: "50%",
+                    background: "radial-gradient(circle,rgba(255,140,50,0.28) 0%,transparent 70%)",
+                    animation: "glowPulse 1.6s ease-in-out infinite",
+                  }} />
+                  <Image src={CAT_SRC[me.cat]} alt="click" width={480} height={480}
+                    style={{
+                      position: "relative", zIndex: 1, width: "100%", height: "100%",
+                      objectFit: "cover", borderRadius: "50%",
+                      boxShadow: "0 0 0 3px rgba(255,140,50,0.5), 0 16px 48px rgba(0,0,0,0.6)",
+                    }}
+                    draggable={false}
+                  />
+                  {event.type === "bait" && (
+                    <div style={{
+                      position: "absolute", inset: 0, borderRadius: "50%", zIndex: 2,
+                      background: "rgba(239,68,68,0.82)", display: "grid", placeItems: "center",
+                      fontSize: "3.5rem",
+                    }}>
+                      🚫
+                    </div>
+                  )}
+                </button>
+              )}
+            </div>
+          </>
+        )}
+
+        {/* ═══════════ END ═══════════ */}
+        {phase === "end" && (
+          <div className="flex-1 flex flex-col items-center justify-center px-4 py-6 gap-5 overflow-y-auto">
+            <div style={{ textAlign: "center" }}>
+              <div style={{ fontSize: "4rem" }}>{iWin ? "🏆" : "😿"}</div>
+              <h2 style={{
+                fontSize: "clamp(2rem,8vw,3.5rem)", fontWeight: 900, lineHeight: 1, margin: "8px 0 4px",
+                background: iWin ? "linear-gradient(90deg,#ffcc00,#ff6644)" : "linear-gradient(90deg,#ef4444,#cc2200)",
+                WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
+              }}>
+                {iWin ? "Victoire !" : "Défaite..."}
+              </h2>
+              <p style={{ opacity: 0.5, fontSize: "0.85rem", margin: 0 }}>{winner?.username} remporte le duel</p>
+            </div>
+
+            <div className="duel-panel" style={{ borderRadius: 22, padding: 18, width: "100%", maxWidth: 360, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+              {[me, opp].map((f, i) => (
+                <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+                  <div style={{ width: 64, height: 64, borderRadius: 16, overflow: "hidden" }}>
+                    <Image src={CAT_SRC[f.cat]} alt={f.username} width={128} height={128} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  </div>
+                  <p style={{ fontWeight: 900, fontSize: "0.88rem", margin: 0 }}>{f.username}</p>
+                  <p style={{ opacity: 0.4, fontSize: "0.72rem", margin: 0 }}>{f.hp} HP restants</p>
+                  <p style={{ fontSize: "1.8rem", fontWeight: 900, color: "#ffcc00", margin: 0 }}>{f.score}</p>
+                  <p style={{ fontSize: "0.65rem", textTransform: "uppercase", opacity: 0.4, fontWeight: 900, margin: 0 }}>pts</p>
+                  {winner?.username === f.username && <span style={{ fontSize: "1.2rem" }}>🏆</span>}
+                </div>
+              ))}
+            </div>
+
+            <div style={{ display: "grid", gap: 8, width: "100%", maxWidth: 360 }}>
+              <button onClick={() => { setCountdown(3); setPhase("countdown"); }}
+                className="duel-btn" style={{ borderRadius: 18, padding: "14px", fontSize: "1rem", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                <Flame size={18} /> Revanche !
+              </button>
+              <button onClick={() => { setIsMulti(false); setIsHost(false); if (supabase && channelRef.current) supabase.removeChannel(channelRef.current); setPhase("lobby"); }}
+                className="duel-panel"
+                style={{ borderRadius: 14, padding: "12px 20px", fontSize: "0.88rem", fontWeight: 900, color: "#fef0d0", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                <ArrowLeft size={14} /> Lobby
+              </button>
+              <Link href="/" className="duel-panel"
+                style={{ borderRadius: 14, padding: "12px 20px", fontSize: "0.88rem", fontWeight: 900, color: "#fef0d0", textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                <ArrowLeft size={14} /> Retour à la ferme
+              </Link>
+            </div>
+          </div>
+        )}
+
       </div>
     </main>
   );
