@@ -67,8 +67,10 @@ function randomCode() {
   return Math.random().toString(36).slice(2, 8).toUpperCase();
 }
 
-function randomTrack() {
-  return tracks[Math.floor(Math.random() * tracks.length)];
+function randomTrack(except?: string | null) {
+  const availableTracks = tracks.filter((track) => track !== except);
+  const playlist = availableTracks.length > 0 ? availableTracks : tracks;
+  return playlist[Math.floor(Math.random() * playlist.length)];
 }
 
 function makeEvent(lobbyId: string): Omit<DuelEvent, "id" | "created_at"> {
@@ -113,7 +115,17 @@ export default function DuelPage() {
   const [now, setNow] = useState(() => Date.now());
   const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const volumeRef = useRef(0.4);
   const eventTimer = useRef<number | null>(null);
+  const pendingPoints = useRef(0);
+  const ownScore = useRef(0);
+  const opponentHpLive = useRef(100);
+  const latestDuel = useRef<{
+    lobby: Lobby | null;
+    me: DuelPlayer | null;
+    opponent: DuelPlayer | null;
+    profile: GameProfile | null;
+  }>({ lobby: null, me: null, opponent: null, profile: null });
 
   const me = players.find((player) => player.user_id === profile?.id) ?? null;
   const opponent = players.find((player) => player.user_id !== profile?.id) ?? null;
@@ -124,6 +136,12 @@ export default function DuelPage() {
 
   const myHp = me?.hp ?? 100;
   const opponentHp = opponent?.hp ?? 100;
+
+  useEffect(() => {
+    latestDuel.current = { lobby, me, opponent, profile };
+    if (me && me.score > ownScore.current) ownScore.current = me.score;
+    if (opponent) opponentHpLive.current = Math.min(opponentHpLive.current, opponent.hp);
+  }, [lobby, me, opponent, profile]);
 
   const loadLobbyState = useCallback(async (lobbyId: string) => {
     if (!supabase) return;
@@ -160,6 +178,66 @@ export default function DuelPage() {
     const timer = window.setInterval(() => setNow(Date.now()), 250);
     return () => window.clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    if (lobby?.status !== "active") {
+      pendingPoints.current = 0;
+      ownScore.current = me?.score ?? 0;
+      opponentHpLive.current = opponent?.hp ?? 100;
+      return;
+    }
+    ownScore.current = me?.score ?? 0;
+    opponentHpLive.current = opponent?.hp ?? 100;
+  }, [lobby?.id, lobby?.status, me?.id, me?.score, opponent?.id, opponent?.hp]);
+
+  useEffect(() => {
+    const client = supabase;
+    if (!client) return;
+    const activeClient = client;
+
+    async function flushPoints() {
+      const points = pendingPoints.current;
+      if (points <= 0) return;
+
+      const { lobby: activeLobby, me: activeMe, opponent: activeOpponent, profile: activeProfile } = latestDuel.current;
+      if (!activeLobby || !activeMe || !activeProfile || activeLobby.status !== "active") {
+        pendingPoints.current = 0;
+        return;
+      }
+
+      pendingPoints.current = 0;
+      ownScore.current = Math.max(ownScore.current, activeMe.score) + points;
+      await activeClient.from("duel_players").update({ score: ownScore.current }).eq("id", activeMe.id);
+
+      if (!activeOpponent) return;
+      opponentHpLive.current = Math.min(opponentHpLive.current, activeOpponent.hp);
+      const nextHp = Math.max(0, opponentHpLive.current - points * 0.8);
+      opponentHpLive.current = nextHp;
+      await activeClient.from("duel_players").update({ hp: nextHp }).eq("id", activeOpponent.id);
+
+      if (nextHp <= 0) {
+        await activeClient
+          .from("duel_lobbies")
+          .update({ status: "finished", winner_id: activeProfile.id })
+          .eq("id", activeLobby.id)
+          .eq("status", "active");
+      }
+    }
+
+    const timer = window.setInterval(flushPoints, 350);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    const client = supabase;
+    if (!client || !lobby || lobby.status !== "active") return;
+    if (me && me.hp <= 0 && opponent) {
+      client.from("duel_lobbies").update({ status: "finished", winner_id: opponent.user_id }).eq("id", lobby.id).eq("status", "active");
+    }
+    if (opponent && opponent.hp <= 0 && me) {
+      client.from("duel_lobbies").update({ status: "finished", winner_id: me.user_id }).eq("id", lobby.id).eq("status", "active");
+    }
+  }, [lobby, me, opponent]);
 
   useEffect(() => {
     const client = supabase;
@@ -241,6 +319,7 @@ export default function DuelPage() {
   }, [isOwner, lobby]);
 
   useEffect(() => {
+    volumeRef.current = volume;
     const audio = audioRef.current;
     if (!audio) return;
     audio.volume = volume;
@@ -249,10 +328,11 @@ export default function DuelPage() {
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio || !lobby?.current_track || lobby.status !== "active") return;
+    if (audio.src.endsWith(lobby.current_track)) return;
     audio.src = lobby.current_track;
-    audio.volume = volume;
+    audio.volume = volumeRef.current;
     audio.play().catch(() => setMessage("Clique une fois sur la page pour lancer la musique."));
-  }, [lobby?.current_track, lobby?.status, volume]);
+  }, [lobby?.current_track, lobby?.status]);
 
   async function createLobby() {
     if (!supabase || !profile) return;
@@ -322,13 +402,9 @@ export default function DuelPage() {
     await supabase.from("duel_events").insert(makeEvent(lobby.id));
   }
 
-  async function score(points: number) {
-    if (!supabase || !lobby || !me || lobby.status !== "active") return;
-    const nextScore = me.score + points;
-    await supabase.from("duel_players").update({ score: nextScore }).eq("id", me.id);
-    if (opponent) {
-      await supabase.from("duel_players").update({ hp: Math.max(0, opponent.hp - points * 0.8) }).eq("id", opponent.id);
-    }
+  function score(points: number) {
+    if (!lobby || !me || lobby.status !== "active") return;
+    pendingPoints.current += points;
   }
 
   function baseClick() {
@@ -441,7 +517,9 @@ export default function DuelPage() {
         onEnded={() => {
           const audio = audioRef.current;
           if (!audio) return;
-          audio.src = randomTrack();
+          const currentPath = new URL(audio.src).pathname;
+          audio.src = randomTrack(currentPath);
+          audio.volume = volumeRef.current;
           audio.play().catch(() => undefined);
         }}
       />
