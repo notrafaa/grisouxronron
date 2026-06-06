@@ -1,8 +1,14 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f7efe1;
-  --foreground: #171b1a;
+  --background: #090d12;
+  --foreground: #f8f5ea;
+  --ink: #090d12;
+  --paper: #f8f5ea;
+  --mint: #8df0bf;
+  --coral: #ff5f3d;
+  --gold: #ffd166;
+  --sky: #65b8ff;
 }
 
 @theme inline {
@@ -17,6 +23,18 @@ body {
   color: var(--foreground);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
   min-height: 100vh;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  background:
+    radial-gradient(circle at 18% 12%, rgb(101 184 255 / 0.24), transparent 34%),
+    radial-gradient(circle at 84% 18%, rgb(255 95 61 / 0.22), transparent 32%),
+    radial-gradient(circle at 54% 88%, rgb(141 240 191 / 0.18), transparent 34%),
+    linear-gradient(135deg, #07090e, #101820 48%, #080b10);
 }
 
 button,
@@ -34,11 +52,141 @@ button {
 }
 
 .eyebrow {
-  color: #68706a;
+  color: rgb(248 245 234 / 0.58);
   font-size: 0.72rem;
   font-weight: 900;
   letter-spacing: 0.16em;
   text-transform: uppercase;
+}
+
+.neo-shell {
+  position: relative;
+  min-height: 100vh;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 20% 20%, rgb(101 184 255 / 0.18), transparent 32%),
+    radial-gradient(circle at 82% 18%, rgb(255 95 61 / 0.18), transparent 30%),
+    radial-gradient(circle at 50% 100%, rgb(141 240 191 / 0.12), transparent 36%),
+    #090d12;
+  color: var(--paper);
+}
+
+.neo-shell::before,
+.duel-shell::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgb(255 255 255 / 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(255 255 255 / 0.045) 1px, transparent 1px);
+  background-size: 42px 42px;
+  mask-image: radial-gradient(circle at center, black, transparent 78%);
+}
+
+.neo-shell::after {
+  content: "";
+  position: fixed;
+  inset: -30%;
+  pointer-events: none;
+  background: conic-gradient(from 90deg, transparent, rgb(141 240 191 / 0.12), transparent, rgb(255 95 61 / 0.12), transparent);
+  animation: slowSpin 18s linear infinite;
+  filter: blur(24px);
+  opacity: 0.72;
+}
+
+.glass-panel {
+  border: 1px solid rgb(255 255 255 / 0.14);
+  background: linear-gradient(145deg, rgb(255 255 255 / 0.14), rgb(255 255 255 / 0.065));
+  box-shadow: 0 24px 80px rgb(0 0 0 / 0.34), inset 0 1px 0 rgb(255 255 255 / 0.14);
+  backdrop-filter: blur(22px);
+}
+
+.soft-card {
+  border: 1px solid rgb(255 255 255 / 0.12);
+  background: rgb(255 255 255 / 0.08);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.12);
+}
+
+.neo-button {
+  color: #07110d;
+  background: linear-gradient(135deg, var(--mint), #53d89a);
+  box-shadow: 0 10px 0 rgb(35 104 74), 0 18px 36px rgb(141 240 191 / 0.2);
+  transition: transform 150ms ease, box-shadow 150ms ease, filter 150ms ease;
+}
+
+.neo-button:hover {
+  filter: saturate(1.12) brightness(1.04);
+  transform: translateY(-1px);
+}
+
+.neo-button:active {
+  transform: translateY(5px);
+  box-shadow: 0 4px 0 rgb(35 104 74), 0 8px 20px rgb(141 240 191 / 0.12);
+}
+
+.danger-button {
+  color: #160704;
+  background: linear-gradient(135deg, #ff8a5f, var(--coral));
+  box-shadow: 0 10px 0 #7a1d15, 0 18px 36px rgb(255 95 61 / 0.24);
+}
+
+.duel-shell {
+  position: relative;
+  min-height: 100vh;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 18% 14%, rgb(255 95 61 / 0.3), transparent 31%),
+    radial-gradient(circle at 78% 18%, rgb(101 184 255 / 0.22), transparent 30%),
+    radial-gradient(circle at 50% 88%, rgb(255 209 102 / 0.18), transparent 34%),
+    linear-gradient(135deg, #08050a, #1a0812 42%, #071018);
+  color: white;
+}
+
+.duel-active-fx::before {
+  content: "";
+  position: absolute;
+  inset: -25%;
+  background:
+    conic-gradient(from 0deg, rgb(255 95 61 / 0.3), transparent 18%, rgb(101 184 255 / 0.22), transparent 46%, rgb(255 209 102 / 0.2), transparent 72%, rgb(141 240 191 / 0.2), rgb(255 95 61 / 0.3)),
+    radial-gradient(circle at 50% 50%, transparent 0 34%, rgb(255 255 255 / 0.08) 35%, transparent 37%);
+  animation: combatColor 4s ease-in-out infinite alternate, slowSpin 12s linear infinite;
+  filter: blur(26px) saturate(1.55);
+}
+
+.duel-active-fx::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(transparent 0 48%, rgb(255 255 255 / 0.09) 50%, transparent 52%),
+    radial-gradient(circle at 50% 50%, transparent 0 46%, rgb(255 95 61 / 0.18) 62%, transparent 74%);
+  background-size: 100% 6px, 100% 100%;
+  mix-blend-mode: screen;
+  animation: scanMove 700ms linear infinite, hitPulse 1.4s ease-in-out infinite;
+}
+
+.combat-bolt {
+  position: absolute;
+  inset: auto;
+  width: 22rem;
+  height: 4rem;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.36), transparent);
+  filter: blur(4px);
+  transform: rotate(-22deg);
+  animation: boltSweep 2.2s ease-in-out infinite;
+}
+
+.combat-bolt:nth-child(2) {
+  animation-delay: 640ms;
+  transform: rotate(18deg);
+}
+
+.combat-bolt:nth-child(3) {
+  animation-delay: 1180ms;
+  transform: rotate(-6deg);
 }
 
 .icon-button {
@@ -46,9 +194,10 @@ button {
   height: 2.75rem;
   width: 2.75rem;
   place-items: center;
-  border: 1px solid rgb(23 27 26 / 0.14);
+  border: 1px solid rgb(255 255 255 / 0.14);
   border-radius: 1rem;
-  box-shadow: 0 5px 0 #171b1a;
+  color: var(--paper);
+  box-shadow: 0 5px 0 rgb(0 0 0 / 0.54);
   transition:
     transform 150ms ease,
     box-shadow 150ms ease,
@@ -61,7 +210,7 @@ button {
 }
 
 .icon-button:active {
-  box-shadow: 0 2px 0 #171b1a;
+  box-shadow: 0 2px 0 rgb(0 0 0 / 0.54);
   transform: translateY(3px);
 }
 
@@ -97,5 +246,76 @@ button {
 
   50% {
     transform: translateY(-12px) scale(1.12);
+  }
+}
+
+@keyframes slowSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes combatColor {
+  0% {
+    opacity: 0.55;
+    filter: hue-rotate(0deg) blur(24px) saturate(1.4);
+  }
+
+  100% {
+    opacity: 0.95;
+    filter: hue-rotate(80deg) blur(28px) saturate(2);
+  }
+}
+
+@keyframes scanMove {
+  to {
+    background-position: 0 6px, 0 0;
+  }
+}
+
+@keyframes hitPulse {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes boltSweep {
+  0% {
+    opacity: 0;
+    translate: -28vw 0;
+  }
+
+  18%,
+  58% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+    translate: 92vw 0;
+  }
+}
+
+@keyframes arenaShake {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+
+  25% {
+    transform: translate3d(1px, -1px, 0);
+  }
+
+  50% {
+    transform: translate3d(-1px, 1px, 0);
+  }
+
+  75% {
+    transform: translate3d(1px, 1px, 0);
   }
 }

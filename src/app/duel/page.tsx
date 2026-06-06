@@ -355,19 +355,36 @@ export default function DuelPage() {
     : null;
 
   if (loading) {
-    return <main className="grid min-h-screen place-items-center bg-[#120f13] text-white">Chargement du duel...</main>;
+    return <main className="duel-shell grid place-items-center font-black uppercase tracking-[0.18em]">Chargement du duel...</main>;
   }
 
   if (!isSupabaseConfigured || !profile) {
     return (
-      <main className="grid min-h-screen place-items-center bg-[#120f13] px-5 text-white">
-        <section className="max-w-md rounded-[28px] border border-white/10 bg-white/10 p-6 text-center shadow-2xl">
-          <ShieldAlert className="mx-auto h-10 w-10 text-[#ff744d]" />
-          <h1 className="mt-4 text-3xl font-black">Connexion requise</h1>
-          <p className="mt-3 text-sm font-bold text-white/70">Connecte-toi dans le clicker avec ton pseudo et ton mot de passe avant de lancer un duel.</p>
-          <Link className="mt-5 inline-flex rounded-2xl bg-[#8df0bf] px-5 py-3 font-black text-[#171b1a]" href="/clicker">
-            Aller au clicker
-          </Link>
+      <main className="duel-shell px-5 py-6 text-white">
+        <section className="relative z-10 mx-auto grid min-h-[calc(100vh-3rem)] max-w-6xl items-center gap-6 lg:grid-cols-[1.1fr_.9fr]">
+          <div className="relative overflow-hidden rounded-[42px] border border-[#ff5f3d]/22 bg-black/22 p-8 shadow-2xl">
+            <div className="duel-active-fx absolute inset-0 opacity-70" />
+            <span className="combat-bolt left-[-12rem] top-[26%]" />
+            <span className="combat-bolt left-[-18rem] top-[62%]" />
+            <div className="relative z-10">
+              <p className="text-sm font-black uppercase tracking-[0.26em] text-[#ffd166]">Mode duel</p>
+              <h1 className="mt-4 max-w-3xl text-6xl font-black leading-none sm:text-8xl">
+                Ronron
+                <span className="block bg-[linear-gradient(90deg,#ff5f3d,#ffd166,#65b8ff)] bg-clip-text text-transparent">Kombat</span>
+              </h1>
+              <p className="mt-5 max-w-xl text-lg font-bold text-white/68">
+                Une arena 1v1 avec PV, events surprise, musique et effets plein ecran.
+              </p>
+            </div>
+          </div>
+          <section className="glass-panel rounded-[34px] p-6 text-center">
+            <ShieldAlert className="mx-auto h-10 w-10 text-[#ff744d]" />
+            <h2 className="mt-4 text-3xl font-black">Connexion requise</h2>
+            <p className="mt-3 text-sm font-bold text-white/70">Connecte-toi dans le clicker avec ton pseudo et ton mot de passe avant de lancer un duel.</p>
+            <Link className="neo-button mt-5 inline-flex rounded-2xl px-5 py-3 font-black" href="/clicker">
+              Aller au clicker
+            </Link>
+          </section>
         </section>
       </main>
     );
@@ -375,25 +392,28 @@ export default function DuelPage() {
 
   if (!lobby) {
     return (
-      <main className="min-h-screen bg-[#120f13] px-5 py-6 text-white">
-        <div className="mx-auto max-w-6xl">
-          <Link className="inline-flex items-center gap-2 rounded-2xl bg-white/10 px-4 py-2 font-black" href="/clicker">
+      <main className="duel-shell px-5 py-6">
+        <div className="relative z-10 mx-auto max-w-6xl">
+          <Link className="glass-panel inline-flex items-center gap-2 rounded-2xl px-4 py-2 font-black" href="/clicker">
             <ArrowLeft className="h-4 w-4" />
             Clicker
           </Link>
           <section className="mt-8 grid gap-5 lg:grid-cols-[1.2fr_.8fr]">
-            <div className="rounded-[36px] border border-[#ff744d]/40 bg-[linear-gradient(135deg,#241018,#3a1117_45%,#101817)] p-7 shadow-2xl shadow-[#ff744d]/10">
+            <div className="glass-panel relative overflow-hidden rounded-[38px] p-7">
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_18%,rgba(255,95,61,.32),transparent_32%),radial-gradient(circle_at_80%_30%,rgba(101,184,255,.24),transparent_30%)]" />
+              <div className="relative">
               <p className="text-sm font-black uppercase tracking-[0.24em] text-[#ffd166]">Mode duel</p>
               <h1 className="mt-4 text-6xl font-black leading-none sm:text-8xl">Ronron Kombat</h1>
               <p className="mt-5 max-w-2xl text-lg font-bold text-white/72">
                 Lobby a 2 joueurs, PV en haut, events surprise, musique aleatoire et stats en realtime.
               </p>
-              <button onClick={createLobby} className="mt-7 inline-flex h-14 items-center gap-2 rounded-2xl bg-[#ff744d] px-6 font-black text-[#171b1a] shadow-[0_8px_0_#7c1f1b] active:translate-y-1">
+              <button onClick={createLobby} className="danger-button mt-7 inline-flex h-14 items-center gap-2 rounded-2xl px-6 font-black">
                 <Gamepad2 className="h-5 w-5" />
                 Creer un lobby
               </button>
+              </div>
             </div>
-            <form onSubmit={joinLobby} className="rounded-[36px] border border-white/10 bg-white/10 p-6 shadow-2xl">
+            <form onSubmit={joinLobby} className="glass-panel rounded-[36px] p-6">
               <p className="text-sm font-black uppercase tracking-[0.2em] text-[#8df0bf]">Rejoindre</p>
               <input
                 value={joinCode}
@@ -402,7 +422,7 @@ export default function DuelPage() {
                 placeholder="CODE"
                 className="mt-5 h-16 w-full rounded-2xl bg-white px-5 text-center text-3xl font-black uppercase tracking-[0.18em] text-[#171b1a] outline-none"
               />
-              <button className="mt-4 flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-[#8df0bf] font-black text-[#171b1a]">
+              <button className="neo-button mt-4 flex h-14 w-full items-center justify-center gap-2 rounded-2xl font-black">
                 <LinkIcon className="h-5 w-5" />
                 Rejoindre
               </button>
@@ -415,7 +435,7 @@ export default function DuelPage() {
   }
 
   return (
-    <main className="min-h-screen overflow-hidden bg-[#120f13] text-white">
+    <main className="duel-shell text-white">
       <audio
         ref={audioRef}
         onEnded={() => {
@@ -425,17 +445,17 @@ export default function DuelPage() {
           audio.play().catch(() => undefined);
         }}
       />
-      <section className="mx-auto flex min-h-screen max-w-7xl flex-col px-4 py-4">
-        <div className="grid gap-3 rounded-[30px] border border-[#ff744d]/30 bg-[#1c1418] p-4 shadow-2xl lg:grid-cols-[1fr_auto_1fr]">
+      <section className="relative z-10 mx-auto flex min-h-screen max-w-7xl flex-col px-4 py-4">
+        <div className="glass-panel grid gap-3 rounded-[30px] p-4 lg:grid-cols-[1fr_auto_1fr]">
           <FighterBar player={me} hp={myHp} align="left" />
-          <div className="grid place-items-center rounded-3xl bg-[#ff744d] px-8 py-3 text-center text-[#171b1a]">
+          <div className="grid place-items-center rounded-3xl bg-[linear-gradient(135deg,#ffd166,#ff5f3d)] px-8 py-3 text-center text-[#171b1a] shadow-[0_0_60px_rgba(255,95,61,.35)]">
             <p className="text-xs font-black uppercase tracking-[0.2em]">Duel</p>
             <p className="text-5xl font-black">{lobby.status === "active" ? timeLeft : "VS"}</p>
           </div>
           <FighterBar player={opponent} hp={opponentHp} align="right" />
         </div>
 
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-[24px] bg-white/10 px-4 py-3">
+        <div className="glass-panel mt-4 flex flex-wrap items-center justify-between gap-3 rounded-[24px] px-4 py-3">
           <div className="flex items-center gap-3">
             <span className="rounded-2xl bg-white px-4 py-2 font-black text-[#171b1a]">Code: {lobby.code}</span>
             <button onClick={() => navigator.clipboard.writeText(lobby.code)} className="rounded-2xl bg-white/10 p-3">
@@ -447,7 +467,7 @@ export default function DuelPage() {
             <Music2 className="h-5 w-5" />
             <input min={0} max={1} step={0.01} type="range" value={volume} onChange={(event) => setVolume(Number(event.target.value))} />
             <Volume2 className="h-5 w-5" />
-            <button onClick={leaveLobby} className="rounded-2xl bg-[#ff744d] px-4 py-2 font-black text-[#171b1a]">
+            <button onClick={leaveLobby} className="danger-button rounded-2xl px-4 py-2 font-black">
               <LogOut className="mr-2 inline h-4 w-4" />
               Quitter
             </button>
@@ -455,7 +475,7 @@ export default function DuelPage() {
         </div>
 
         {lobby.status === "waiting" && (
-          <section className="mt-5 grid flex-1 place-items-center rounded-[36px] border border-white/10 bg-white/8 p-6 text-center">
+          <section className="glass-panel mt-5 grid flex-1 place-items-center rounded-[38px] p-6 text-center">
             <div>
               <Swords className="mx-auto h-16 w-16 text-[#ff744d]" />
               <h1 className="mt-4 text-5xl font-black">En attente du 2e joueur</h1>
@@ -469,7 +489,7 @@ export default function DuelPage() {
                 <button
                   disabled={players.length !== 2}
                   onClick={startMatch}
-                  className="mt-7 inline-flex h-14 items-center gap-2 rounded-2xl bg-[#8df0bf] px-6 font-black text-[#171b1a] disabled:opacity-40"
+                  className="neo-button mt-7 inline-flex h-14 items-center gap-2 rounded-2xl px-6 font-black disabled:opacity-40"
                 >
                   <Play className="h-5 w-5" />
                   Lancer le duel
@@ -485,9 +505,13 @@ export default function DuelPage() {
               const rect = event.currentTarget.getBoundingClientRect();
               handleTargetClick(((event.clientX - rect.left) / rect.width) * 100, ((event.clientY - rect.top) / rect.height) * 100);
             }}
-            className="relative mt-5 flex flex-1 cursor-crosshair overflow-hidden rounded-[36px] border border-[#ff744d]/30 bg-[radial-gradient(circle_at_center,#3b1620,#160f14_70%)] p-5 shadow-2xl"
+            className={`duel-active-fx relative mt-5 flex flex-1 cursor-crosshair overflow-hidden rounded-[40px] border border-[#ff744d]/30 bg-[#0b060a] p-5 shadow-2xl shadow-[#ff5f3d]/18 ${activeEvent ? "animate-[arenaShake_180ms_linear_infinite]" : ""}`}
           >
-            <div className="absolute inset-0 animate-pulse bg-[#ff744d]/5" />
+            <span className="combat-bolt left-[-12rem] top-[18%]" />
+            <span className="combat-bolt left-[-18rem] top-[55%]" />
+            <span className="combat-bolt left-[-16rem] top-[78%]" />
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(255,95,61,.16),transparent_30%),radial-gradient(circle_at_20%_80%,rgba(101,184,255,.18),transparent_26%)]" />
+            <div className="absolute inset-0 animate-pulse bg-[#ff744d]/8 mix-blend-screen" />
             {activeEvent?.type === "target" && (
               <button
                 className="absolute z-20 grid h-24 w-24 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-[#ff744d] text-[#171b1a] shadow-[0_0_80px_#ff744d]"
@@ -497,12 +521,12 @@ export default function DuelPage() {
               </button>
             )}
             <div className="relative z-10 m-auto grid w-full max-w-3xl gap-5 text-center">
-              <button onClick={baseClick} className="mx-auto grid h-56 w-56 place-items-center rounded-full bg-[#8df0bf] text-[#171b1a] shadow-[0_18px_0_#366f55] active:translate-y-2 active:shadow-[0_8px_0_#366f55]">
+              <button onClick={baseClick} className="neo-button mx-auto grid h-56 w-56 place-items-center rounded-full text-[#171b1a] active:translate-y-2">
                 <MousePointer2 className="h-20 w-20" />
                 <span className="text-2xl font-black">CLIQUE</span>
               </button>
               {activeEvent && (
-                <div className="rounded-[28px] border border-white/10 bg-white/12 p-5 backdrop-blur">
+                <div className="glass-panel rounded-[30px] p-5">
                   <p className="text-sm font-black uppercase tracking-[0.18em] text-[#ffd166]">Event</p>
                   <h2 className="mt-2 text-3xl font-black">{activeEvent.prompt}</h2>
                   {activeEvent.type === "phrase" && (
@@ -554,10 +578,10 @@ export default function DuelPage() {
         )}
 
         {(lobby.status === "finished" || lobby.status === "aborted") && (
-          <section className="mt-5 grid flex-1 place-items-center rounded-[36px] bg-white/10 p-6 text-center">
+          <section className="glass-panel mt-5 grid flex-1 place-items-center rounded-[36px] p-6 text-center">
             <Trophy className="mx-auto h-16 w-16 text-[#ffd166]" />
             <h1 className="mt-4 text-5xl font-black">{lobby.status === "finished" ? `${winnerName} gagne` : "Combat interrompu"}</h1>
-            <button onClick={leaveLobby} className="mt-6 rounded-2xl bg-[#8df0bf] px-6 py-3 font-black text-[#171b1a]">Retour</button>
+            <button onClick={leaveLobby} className="neo-button mt-6 rounded-2xl px-6 py-3 font-black">Retour</button>
           </section>
         )}
       </section>

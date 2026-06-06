@@ -557,8 +557,8 @@ export default function ClickerGame() {
 
   if (loading) {
     return (
-      <main className="grid min-h-screen place-items-center bg-[#101820] text-[#f8f4e8]">
-        <div className="rounded-full border border-white/15 bg-white/10 px-5 py-3 text-sm font-black uppercase tracking-[0.18em] shadow-2xl">
+      <main className="neo-shell grid place-items-center">
+        <div className="glass-panel rounded-full px-5 py-3 text-sm font-black uppercase tracking-[0.18em] text-white">
           <Sparkles className="mr-2 inline h-5 w-5 animate-pulse" />
           Chargement du squish
         </div>
@@ -568,27 +568,26 @@ export default function ClickerGame() {
 
   if (!profile) {
     return (
-      <main className="min-h-screen overflow-hidden bg-[#f7efe1] text-[#171b1a]">
-        <section className="relative mx-auto grid min-h-screen w-full max-w-7xl items-center gap-8 px-5 py-8 lg:grid-cols-[1fr_430px]">
-          <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_18%_18%,rgba(105,214,255,.36),transparent_34%),radial-gradient(circle_at_82%_28%,rgba(255,140,97,.28),transparent_32%),linear-gradient(135deg,#f7efe1,#eaf6ef_52%,#f9ead7)]" />
+      <main className="neo-shell">
+        <section className="relative z-10 mx-auto grid min-h-screen w-full max-w-7xl items-center gap-8 px-5 py-8 lg:grid-cols-[1fr_430px]">
           <div className="space-y-7">
-            <p className="inline-flex items-center gap-2 rounded-full border border-[#171b1a]/10 bg-white/70 px-4 py-2 text-xs font-black uppercase tracking-[0.18em] shadow-lg shadow-black/5 backdrop-blur">
+            <p className="glass-panel inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-black uppercase tracking-[0.18em] text-white">
               <Cat className="h-4 w-4" />
               Le meilleur jeu
             </p>
             <div>
-              <h1 className="max-w-4xl text-6xl font-black leading-[0.9] sm:text-8xl lg:text-9xl">
+              <h1 className="max-w-4xl text-6xl font-black leading-[0.9] text-white sm:text-8xl lg:text-9xl">
                 Grisou
-                <span className="block text-[#ff744d]">X Ronron</span>
+                <span className="block bg-[linear-gradient(90deg,#65b8ff,#8df0bf,#ffd166,#ff5f3d)] bg-clip-text text-transparent">X Ronron</span>
               </h1>
             </div>
             <div className="grid max-w-3xl grid-cols-2 gap-4">
               {Object.entries(cats).map(([id, cat]) => (
-                <div key={id} className="group overflow-hidden rounded-[28px] border border-black/10 bg-white/76 p-3 shadow-2xl shadow-black/10 backdrop-blur">
-                  <div className="overflow-hidden rounded-[22px] bg-[#f7efe1]">
+                <div key={id} className="glass-panel group overflow-hidden rounded-[30px] p-3">
+                  <div className="overflow-hidden rounded-[24px] bg-black/30">
                     <Image src={cat.src} alt={cat.name} width={520} height={520} className="aspect-square w-full object-cover transition duration-500 group-hover:scale-105" priority />
                   </div>
-                  <div className="flex items-center justify-between gap-2 px-2 pt-3 text-sm font-black">
+                  <div className="flex items-center justify-between gap-2 px-2 pt-3 text-sm font-black text-white">
                     <span>{cat.name}</span>
                     <span style={{ color: cat.accent }}>{cat.vibe}</span>
                   </div>
@@ -596,17 +595,17 @@ export default function ClickerGame() {
               ))}
             </div>
             <div className="flex flex-wrap gap-3">
-              <Link className="rounded-2xl bg-[#171b1a] px-5 py-3 text-sm font-black text-white shadow-lg" href="/clicker">
+              <Link className="neo-button rounded-2xl px-5 py-3 text-sm font-black" href="/clicker">
                 Mode clicker
               </Link>
-              <Link className="rounded-2xl bg-[#ff744d] px-5 py-3 text-sm font-black text-[#171b1a] shadow-lg" href="/duel">
+              <Link className="danger-button rounded-2xl px-5 py-3 text-sm font-black" href="/duel">
                 Mode duel
               </Link>
             </div>
           </div>
 
-          <form onSubmit={handleStart} className="rounded-[30px] border border-black/10 bg-white/82 p-5 shadow-2xl shadow-black/14 backdrop-blur-xl">
-            <div className="rounded-[24px] bg-[#171b1a] p-5 text-white">
+          <form onSubmit={handleStart} className="glass-panel rounded-[34px] p-5">
+            <div className="rounded-[26px] border border-white/10 bg-black/46 p-5 text-white shadow-inner">
               <p className="text-xs font-black uppercase tracking-[0.18em] text-[#8df0bf]">Connexion</p>
               <div className="mt-4 grid grid-cols-2 gap-2 rounded-2xl bg-white/10 p-1">
                 <button
@@ -643,7 +642,7 @@ export default function ClickerGame() {
                 id="username"
                 value={username}
                 onChange={(event) => setUsername(event.target.value)}
-                className="mt-5 h-14 w-full rounded-2xl border border-white/10 bg-white px-4 text-xl font-black text-[#171b1a] outline-none ring-[#8df0bf] transition focus:ring-4"
+                className="mt-5 h-14 w-full rounded-2xl border border-white/10 bg-white/92 px-4 text-xl font-black text-[#101820] outline-none ring-[#8df0bf] transition focus:ring-4"
                 maxLength={18}
                 placeholder="Pseudo"
                 autoComplete="username"
@@ -654,26 +653,26 @@ export default function ClickerGame() {
                   id="password"
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
-                  className="h-14 w-full rounded-2xl border border-white/10 bg-white px-12 text-xl font-black text-[#171b1a] outline-none ring-[#8df0bf] transition focus:ring-4"
+                  className="h-14 w-full rounded-2xl border border-white/10 bg-white/92 px-12 text-xl font-black text-[#101820] outline-none ring-[#8df0bf] transition focus:ring-4"
                   minLength={6}
                   type="password"
                   placeholder="Mot de passe"
                   autoComplete={authMode === "login" ? "current-password" : "new-password"}
                 />
               </div>
-              <button className="mt-4 flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-[#8df0bf] px-4 font-black text-[#102318] shadow-[0_8px_0_#48a573] transition active:translate-y-1 active:shadow-[0_3px_0_#48a573]">
+              <button className="neo-button mt-4 flex h-14 w-full items-center justify-center gap-2 rounded-2xl px-4 font-black">
                 {authMode === "login" ? <LogIn className="h-5 w-5" /> : <UserPlus className="h-5 w-5" />}
                 {authMode === "login" ? "Continuer" : "Creer le compte"}
               </button>
             </div>
-            <p className="mt-4 rounded-2xl bg-[#f7efe1] px-4 py-3 text-sm font-bold text-[#565a52]">
+            <p className="soft-card mt-4 rounded-2xl px-4 py-3 text-sm font-bold text-white/70">
               {isSupabaseMisconfigured
                 ? "URL Supabase incorrecte: elle doit finir par .supabase.co, pas par vercel.app."
                 : isSupabaseConfigured
                   ? "Supabase actif: pseudos uniques, sauvegarde et classement."
                   : "Mode demo local: ajoute Supabase pour le multijoueur."}
             </p>
-            {message && <p className="mt-3 rounded-2xl bg-[#ffe0d6] px-4 py-3 text-sm font-black text-[#b83220]">{message}</p>}
+            {message && <p className="mt-3 rounded-2xl bg-[#ff5f3d]/18 px-4 py-3 text-sm font-black text-[#ffd6ca]">{message}</p>}
           </form>
         </section>
       </main>
@@ -681,7 +680,7 @@ export default function ClickerGame() {
   }
 
   return (
-    <main className="min-h-screen overflow-hidden bg-[#111818] text-[#171b1a]">
+    <main className="neo-shell text-white">
       {Object.values(remoteCursors).map((cursor) => (
         <div
           key={cursor.id}
@@ -697,8 +696,7 @@ export default function ClickerGame() {
           {cursor.username}
         </div>
       ))}
-      <div className="fixed inset-0 -z-10 bg-[radial-gradient(circle_at_24%_16%,rgba(105,214,255,.38),transparent_30%),radial-gradient(circle_at_80%_14%,rgba(255,140,97,.32),transparent_28%),radial-gradient(circle_at_58%_92%,rgba(141,240,191,.3),transparent_30%),linear-gradient(135deg,#12201f,#f7efe1_40%,#eaf6ef_76%,#101817)]" />
-      <div className="mx-auto grid min-h-screen w-full max-w-[1500px] gap-4 px-4 py-4 xl:grid-cols-[310px_minmax(520px,1fr)_380px]">
+      <div className="relative z-10 mx-auto grid min-h-screen w-full max-w-[1500px] gap-4 px-4 py-4 xl:grid-cols-[310px_minmax(520px,1fr)_380px]">
         <aside className="order-2 flex flex-col gap-4 xl:order-1">
           <Panel>
             <div className="flex items-center justify-between gap-3">
@@ -706,15 +704,15 @@ export default function ClickerGame() {
                 <p className="eyebrow">Joueur</p>
                 <h2 className="truncate text-3xl font-black">{profile.username}</h2>
               </div>
-              <button title="Quitter" onClick={signOut} className="icon-button bg-[#ffe0d6]">
+              <button title="Quitter" onClick={signOut} className="icon-button bg-white/10">
                 <LogOut className="h-5 w-5" />
               </button>
             </div>
             <div className="mt-4 grid grid-cols-2 gap-2">
-              <Link className="rounded-2xl bg-[#171b1a] px-3 py-2 text-center text-sm font-black text-white" href="/clicker">
+              <Link className="neo-button rounded-2xl px-3 py-2 text-center text-sm font-black" href="/clicker">
                 Clicker
               </Link>
-              <Link className="rounded-2xl bg-[#ff744d] px-3 py-2 text-center text-sm font-black text-[#171b1a]" href="/duel">
+              <Link className="danger-button rounded-2xl px-3 py-2 text-center text-sm font-black" href="/duel">
                 Duel
               </Link>
             </div>
@@ -726,8 +724,8 @@ export default function ClickerGame() {
                   onClick={() => switchCat(id as CatId)}
                   className={`rounded-[22px] border p-2 text-left font-black transition ${
                     profile.selected_cat === id
-                      ? "border-[#171b1a] bg-[#8df0bf] shadow-[0_8px_0_#171b1a]"
-                      : "border-black/10 bg-[#f7efe1] hover:-translate-y-0.5"
+                      ? "border-[#8df0bf] bg-[#8df0bf]/22 shadow-[0_0_30px_rgba(141,240,191,.2)]"
+                      : "border-white/10 bg-white/8 hover:-translate-y-0.5"
                   }`}
                 >
                   <Image src={cat.src} alt={cat.name} width={120} height={120} className="aspect-square w-full rounded-[17px] object-cover" />
@@ -746,10 +744,10 @@ export default function ClickerGame() {
               <StatRow icon={Gem} label="Niveaux" value={numberFormat.format(totalUpgradeLevels)} />
             </div>
             <div className="mt-5 flex gap-2">
-              <button title="Son" onClick={() => setSoundOn((value) => !value)} className="icon-button bg-[#dff4ff]">
+              <button title="Son" onClick={() => setSoundOn((value) => !value)} className="icon-button bg-white/10">
                 {soundOn ? <Volume2 className="h-5 w-5" /> : <Music2 className="h-5 w-5" />}
               </button>
-              <button title="Sauvegarder" onClick={() => saveProfile(profile, false)} className="icon-button bg-[#ffe28a]">
+              <button title="Sauvegarder" onClick={() => saveProfile(profile, false)} className="icon-button bg-white/10">
                 <Save className="h-5 w-5" />
               </button>
               <div className="flex flex-1 items-center justify-end text-xs font-black uppercase tracking-[0.14em] text-[#68706a]">
@@ -759,8 +757,8 @@ export default function ClickerGame() {
           </Panel>
         </aside>
 
-        <section className="order-1 flex min-h-[650px] flex-col rounded-[36px] border border-white/34 bg-white/64 p-4 shadow-2xl shadow-black/16 backdrop-blur-xl xl:order-2 xl:h-[calc(100vh-2rem)]">
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-[28px] bg-[#171b1a] p-4 text-white shadow-lg shadow-black/10">
+        <section className="glass-panel order-1 flex min-h-[650px] flex-col rounded-[38px] p-4 xl:order-2 xl:h-[calc(100vh-2rem)]">
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-[28px] border border-white/10 bg-black/52 p-4 text-white shadow-lg shadow-black/10">
             <div>
               <p className="text-xs font-black uppercase tracking-[0.2em] text-[#8df0bf]">Croquettes</p>
               <h2 className="text-5xl font-black leading-none sm:text-6xl">{numberFormat.format(profile.treats)}</h2>
@@ -785,7 +783,7 @@ export default function ClickerGame() {
               className="relative grid aspect-square w-full max-w-[540px] place-items-center rounded-full outline-none"
               style={{ background: `radial-gradient(circle, ${currentCat.glow} 0%, rgba(255,255,255,.58) 42%, transparent 70%)` }}
             >
-              <span className="absolute inset-10 rounded-full border border-white/50 bg-white/25 shadow-inner" />
+              <span className="absolute inset-10 rounded-full border border-white/20 bg-white/8 shadow-inner" />
               <Image
                 src={currentCat.src}
                 alt={currentCat.name}
@@ -809,12 +807,12 @@ export default function ClickerGame() {
             </button>
           </div>
 
-          <div className="rounded-[28px] bg-white/84 p-4 shadow-lg shadow-black/5">
+          <div className="soft-card rounded-[28px] p-4 shadow-lg shadow-black/5">
             <div className="mb-2 flex items-center justify-between gap-3">
               <p className="font-black">{currentCat.name} est en mode {currentCat.vibe}</p>
-              {nextUpgrade && <p className="text-sm font-black text-[#68706a]">Prochain: {numberFormat.format(nextUpgrade.cost)}</p>}
+              {nextUpgrade && <p className="text-sm font-black text-white/62">Prochain: {numberFormat.format(nextUpgrade.cost)}</p>}
             </div>
-            <div className="h-4 overflow-hidden rounded-full bg-[#e5decd]">
+            <div className="h-4 overflow-hidden rounded-full bg-white/12">
               <div className="h-full rounded-full bg-[#8df0bf] transition-all duration-300" style={{ width: `${nextProgress}%` }} />
             </div>
           </div>
@@ -839,8 +837,8 @@ export default function ClickerGame() {
                     onClick={() => buyUpgrade(upgrade)}
                     className={`group rounded-[24px] border p-3 text-left transition ${
                       affordable
-                        ? "border-[#171b1a] bg-white shadow-[0_8px_0_#171b1a] active:translate-y-1 active:shadow-[0_3px_0_#171b1a]"
-                        : "border-black/10 bg-[#f7efe1]/86"
+                        ? "border-[#8df0bf] bg-white/16 shadow-[0_0_30px_rgba(141,240,191,.18)] active:translate-y-1"
+                        : "border-white/10 bg-white/8"
                     }`}
                   >
                     <div className="grid grid-cols-[48px_1fr_auto] items-center gap-3">
@@ -853,10 +851,10 @@ export default function ClickerGame() {
                           niv. {level} - {upgrade.effect(level)}
                         </span>
                       </span>
-                      <span className="rounded-2xl bg-[#171b1a] px-3 py-2 text-sm font-black text-white">{numberFormat.format(cost)}</span>
+                      <span className="rounded-2xl bg-black/54 px-3 py-2 text-sm font-black text-white">{numberFormat.format(cost)}</span>
                     </div>
-                    <p className="mt-3 text-xs font-bold text-[#565a52]">{upgrade.description}</p>
-                    <div className="mt-3 h-2 overflow-hidden rounded-full bg-[#ded6c3]">
+                    <p className="mt-3 text-xs font-bold text-white/58">{upgrade.description}</p>
+                    <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/12">
                       <div className="h-full rounded-full transition-all duration-300" style={{ width: `${progress}%`, backgroundColor: upgrade.tint }} />
                     </div>
                   </button>
@@ -872,15 +870,15 @@ export default function ClickerGame() {
             </div>
             <div className="mt-4 grid gap-2">
               {(leaderboard.length ? leaderboard : [profile]).map((item, index) => (
-                <div key={item.id} className="flex items-center justify-between gap-3 rounded-2xl bg-[#f7efe1] px-3 py-3 text-sm font-black">
+                <div key={item.id} className="flex items-center justify-between gap-3 rounded-2xl bg-white/8 px-3 py-3 text-sm font-black">
                   <span className="truncate">{index + 1}. {item.username}</span>
-                  <span className="rounded-full bg-white px-3 py-1">{numberFormat.format(item.treats)}</span>
+                  <span className="rounded-full bg-white/12 px-3 py-1">{numberFormat.format(item.treats)}</span>
                 </div>
               ))}
             </div>
-            {message && <p className="mt-3 rounded-2xl bg-[#ffe0d6] px-4 py-3 text-sm font-black text-[#b83220]">{message}</p>}
+            {message && <p className="mt-3 rounded-2xl bg-[#ff5f3d]/18 px-4 py-3 text-sm font-black text-[#ffd6ca]">{message}</p>}
             {!isSupabaseConfigured && (
-              <p className="mt-3 rounded-2xl bg-[#f7efe1] px-4 py-3 text-xs font-bold text-[#68706a]">
+              <p className="soft-card mt-3 rounded-2xl px-4 py-3 text-xs font-bold text-white/60">
                 Le classement global apparaitra avec Supabase.
               </p>
             )}
@@ -893,7 +891,7 @@ export default function ClickerGame() {
 
 function Panel({ children }: { children: React.ReactNode }) {
   return (
-    <section className="rounded-[28px] border border-white/36 bg-white/78 p-4 shadow-xl shadow-black/10 backdrop-blur-xl">
+    <section className="glass-panel rounded-[30px] p-4">
       {children}
     </section>
   );
@@ -909,12 +907,12 @@ function StatRow({
   value: string;
 }) {
   return (
-    <div className="flex items-center justify-between gap-3 rounded-2xl bg-[#f7efe1] px-3 py-3 font-black">
-      <span className="flex min-w-0 items-center gap-2 text-sm text-[#565a52]">
+    <div className="soft-card flex items-center justify-between gap-3 rounded-2xl px-3 py-3 font-black">
+      <span className="flex min-w-0 items-center gap-2 text-sm text-white/64">
         <Icon className="h-4 w-4 shrink-0" />
         <span className="truncate">{label}</span>
       </span>
-      <span className="text-[#171b1a]">{value}</span>
+      <span className="text-white">{value}</span>
     </div>
   );
 }
