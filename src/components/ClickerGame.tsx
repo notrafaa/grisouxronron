@@ -183,6 +183,7 @@ export default function ClickerGame() {
   const [authMode, setAuthMode] = useState<AuthMode>("login");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
+  const [authLoading, setAuthLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [soundOn, setSoundOn] = useState(true);
   const [pops, setPops] = useState<Pop[]>([]);
@@ -376,6 +377,7 @@ export default function ClickerGame() {
 
   async function handleStart(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (authLoading) return;
     const clean = username.trim().replace(/\s+/g, " ");
     if (clean.length < 3 || clean.length > 18) {
       setMessage("Pseudo entre 3 et 18 caracteres.");
@@ -394,7 +396,7 @@ export default function ClickerGame() {
       return;
     }
 
-    setLoading(true);
+    setAuthLoading(true);
     setMessage("");
 
     if (!supabase) {
@@ -403,12 +405,12 @@ export default function ClickerGame() {
         const existing = normalizeProfile(JSON.parse(cached));
         if (existing.username.toLowerCase() === clean.toLowerCase()) {
           setProfile(existing);
-          setLoading(false);
+          setAuthLoading(false);
           return;
         }
       }
       if (authMode === "login") {
-        setLoading(false);
+        setAuthLoading(false);
         setMessage("Aucun compte local avec ce pseudo. Cree-le d'abord.");
         playTone("error");
         return;
@@ -416,11 +418,46 @@ export default function ClickerGame() {
       const next = freshProfile(clean);
       setProfile(next);
       window.localStorage.setItem(demoKey, JSON.stringify(next));
-      setLoading(false);
+      setAuthLoading(false);
       return;
     }
 
     const email = usernameToAuthEmail(clean);
+    const client = supabase;
+    const loadExistingProfile = async (userId: string) => {
+      const { data, error } = await client.from("profiles").select("*").eq("id", userId).single();
+      if (error || !data) return false;
+      setProfile(normalizeProfile(data as GameProfile));
+      await loadLeaderboard();
+      playTone("save");
+      return true;
+    };
+
+    if (authMode === "create") {
+      const existingAuth = await supabase.auth.signInWithPassword({ email, password });
+      if (existingAuth.data.user) {
+        const loaded = await loadExistingProfile(existingAuth.data.user.id);
+        setAuthLoading(false);
+        if (!loaded) {
+          setMessage("Compte trouve, mais sauvegarde introuvable.");
+          playTone("error");
+        }
+        return;
+      }
+
+      const { data: existingProfile } = await supabase
+        .from("profiles")
+        .select("id")
+        .ilike("username", clean)
+        .maybeSingle();
+      if (existingProfile) {
+        setAuthLoading(false);
+        setMessage("Ce pseudo existe deja. Utilise Se connecter.");
+        playTone("error");
+        return;
+      }
+    }
+
     const auth =
       authMode === "create"
         ? await supabase.auth.signUp({
@@ -431,9 +468,12 @@ export default function ClickerGame() {
         : await supabase.auth.signInWithPassword({ email, password });
 
     if (auth.error || !auth.data.user) {
-      setLoading(false);
+      setAuthLoading(false);
+      const status = auth.error?.status;
       setMessage(
-        authMode === "create"
+        status === 429
+          ? "Trop de créations de comptes. Attends un peu avant de reessayer."
+          : authMode === "create"
           ? "Impossible de creer le compte. Le pseudo existe peut-etre deja."
           : "Pseudo ou mot de passe incorrect.",
       );
@@ -442,21 +482,18 @@ export default function ClickerGame() {
     }
 
     if (authMode === "login") {
-      const { data, error } = await supabase.from("profiles").select("*").eq("id", auth.data.user.id).single();
-      setLoading(false);
-      if (error || !data) {
+      const loaded = await loadExistingProfile(auth.data.user.id);
+      setAuthLoading(false);
+      if (!loaded) {
         setMessage("Compte trouve, mais sauvegarde introuvable.");
         playTone("error");
         return;
       }
-      setProfile(normalizeProfile(data as GameProfile));
-      await loadLeaderboard();
-      playTone("save");
       return;
     }
 
     if (!auth.data.session) {
-      setLoading(false);
+      setAuthLoading(false);
       setMessage("Desactive la confirmation email dans Supabase Auth pour les comptes par pseudo.");
       playTone("error");
       return;
@@ -464,7 +501,7 @@ export default function ClickerGame() {
 
     const next = freshProfile(clean, auth.data.user.id);
     const { error } = await supabase.from("profiles").insert(next);
-    setLoading(false);
+    setAuthLoading(false);
     if (error) {
       setMessage(error.code === "23505" ? "Ce pseudo est deja pris." : "Impossible de creer le profil.");
       await supabase.auth.signOut();
@@ -660,9 +697,12 @@ export default function ClickerGame() {
                   autoComplete={authMode === "login" ? "current-password" : "new-password"}
                 />
               </div>
-              <button className="neo-button mt-4 flex h-14 w-full items-center justify-center gap-2 rounded-2xl px-4 font-black">
+              <button
+                disabled={authLoading}
+                className="neo-button mt-4 flex h-14 w-full items-center justify-center gap-2 rounded-2xl px-4 font-black disabled:cursor-wait disabled:opacity-70"
+              >
                 {authMode === "login" ? <LogIn className="h-5 w-5" /> : <UserPlus className="h-5 w-5" />}
-                {authMode === "login" ? "Continuer" : "Creer le compte"}
+                {authLoading ? "Chargement..." : authMode === "login" ? "Continuer" : "Creer le compte"}
               </button>
             </div>
             <p className="soft-card mt-4 rounded-2xl px-4 py-3 text-sm font-bold text-white/70">
