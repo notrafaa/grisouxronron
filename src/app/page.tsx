@@ -40,13 +40,13 @@ type Pop = {
 const cats: Record<CatId, { name: string; src: string; accent: string; vibe: string }> = {
   grisou: {
     name: "Grisou",
-    src: "/cats/grisou.png",
+    src: "/cats/grisou.jpg",
     accent: "#6fb7ff",
     vibe: "moelleux cosmique",
   },
   ronron: {
     name: "Ronron",
-    src: "/cats/ronron.png",
+    src: "/cats/ronron.jpg",
     accent: "#ff8d6b",
     vibe: "squeechie solaire",
   },
