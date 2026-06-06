@@ -76,10 +76,10 @@ function randomTrack(except?: string | null) {
 function makeEvent(lobbyId: string): Omit<DuelEvent, "id" | "created_at"> {
   const types: DuelEventType[] = ["phrase", "target", "spam", "hold", "bait"];
   const type = types[Math.floor(Math.random() * types.length)];
-  const expires = new Date(Date.now() + 7000).toISOString();
+  const expires = new Date(Date.now() + 9000).toISOString();
   if (type === "phrase") {
     const phrase = phrasePrompts[Math.floor(Math.random() * phrasePrompts.length)];
-    return { lobby_id: lobbyId, type, prompt: `Ecris: ${phrase}`, payload: { phrase }, points: 14, expires_at: expires };
+    return { lobby_id: lobbyId, type, prompt: `Ecris: ${phrase}`, payload: { phrase }, points: 7, expires_at: expires };
   }
   if (type === "target") {
     return {
@@ -87,17 +87,17 @@ function makeEvent(lobbyId: string): Omit<DuelEvent, "id" | "created_at"> {
       type,
       prompt: "Clique la zone rouge",
       payload: { x: 18 + Math.random() * 64, y: 24 + Math.random() * 52 },
-      points: 12,
+      points: 6,
       expires_at: expires,
     };
   }
   if (type === "spam") {
-    return { lobby_id: lobbyId, type, prompt: "Rafale: 12 clics", payload: { needed: 12 }, points: 16, expires_at: expires };
+    return { lobby_id: lobbyId, type, prompt: "Rafale: 8 clics", payload: { needed: 8 }, points: 8, expires_at: expires };
   }
   if (type === "hold") {
-    return { lobby_id: lobbyId, type, prompt: "Maintiens 1 seconde", payload: { ms: 1000 }, points: 13, expires_at: expires };
+    return { lobby_id: lobbyId, type, prompt: "Maintiens 1 seconde", payload: { ms: 1000 }, points: 7, expires_at: expires };
   }
-  return { lobby_id: lobbyId, type, prompt: "Piege: ne clique pas 3 secondes", payload: { seconds: 3 }, points: 15, expires_at: expires };
+  return { lobby_id: lobbyId, type, prompt: "Piege: ne clique pas 3 secondes", payload: { seconds: 3 }, points: 7, expires_at: expires };
 }
 
 export default function DuelPage() {
@@ -211,7 +211,7 @@ export default function DuelPage() {
 
       if (!activeOpponent) return;
       opponentHpLive.current = Math.min(opponentHpLive.current, activeOpponent.hp);
-      const nextHp = Math.max(0, opponentHpLive.current - points * 0.8);
+      const nextHp = Math.max(0, opponentHpLive.current - points * 0.25);
       opponentHpLive.current = nextHp;
       await activeClient.from("duel_players").update({ hp: nextHp }).eq("id", activeOpponent.id);
 
@@ -224,7 +224,7 @@ export default function DuelPage() {
       }
     }
 
-    const timer = window.setInterval(flushPoints, 350);
+    const timer = window.setInterval(flushPoints, 800);
     return () => window.clearInterval(timer);
   }, []);
 
@@ -312,7 +312,7 @@ export default function DuelPage() {
     if (eventTimer.current) window.clearInterval(eventTimer.current);
     eventTimer.current = window.setInterval(() => {
       client.from("duel_events").insert(makeEvent(lobby.id));
-    }, 5200);
+    }, 9000);
     return () => {
       if (eventTimer.current) window.clearInterval(eventTimer.current);
     };
@@ -395,7 +395,7 @@ export default function DuelPage() {
       .update({
         status: "active",
         started_at: new Date(now).toISOString(),
-        ends_at: new Date(now + 60000).toISOString(),
+        ends_at: new Date(now + 75000).toISOString(),
         current_track: randomTrack(),
       })
       .eq("id", lobby.id);

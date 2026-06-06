@@ -5,7 +5,6 @@ import {
   Coins,
   Flame,
   Gem,
-  Hand,
   KeyRound,
   LogIn,
   LogOut,
@@ -296,6 +295,39 @@ function normalizeProfile(profile: GameProfile): GameProfile {
   };
 }
 
+function profileSavePayload(profile: GameProfile) {
+  return {
+    id: profile.id,
+    username: profile.username,
+    selected_cat: profile.selected_cat,
+    treats: profile.treats,
+    total_clicks: profile.total_clicks,
+    click_power: profile.click_power,
+    auto_rate: profile.auto_rate,
+    multiplier: profile.multiplier,
+    upgrades: profile.upgrades,
+    rebirths: profile.rebirths,
+    lifetime_treats: profile.lifetime_treats,
+    cat_levels: profile.cat_levels,
+    updated_at: new Date().toISOString(),
+  };
+}
+
+function legacyProfileSavePayload(profile: GameProfile) {
+  return {
+    id: profile.id,
+    username: profile.username,
+    selected_cat: profile.selected_cat,
+    treats: profile.treats,
+    total_clicks: profile.total_clicks,
+    click_power: profile.click_power,
+    auto_rate: profile.auto_rate,
+    multiplier: profile.multiplier,
+    upgrades: profile.upgrades,
+    updated_at: new Date().toISOString(),
+  };
+}
+
 export default function ClickerGame() {
   const [profile, setProfile] = useState<GameProfile | null>(null);
   const [username, setUsername] = useState("");
@@ -431,7 +463,24 @@ export default function ClickerGame() {
       }
 
       const { data } = await supabase.from("profiles").select("*").eq("id", userId).single();
-      if (data) setProfile(normalizeProfile(data as GameProfile));
+      if (data) {
+        const remoteProfile = normalizeProfile(data as GameProfile);
+        const cached = window.localStorage.getItem(demoKey);
+        if (cached) {
+          const cachedProfile = normalizeProfile(JSON.parse(cached));
+          if (
+            cachedProfile.id === remoteProfile.id
+            && (cachedProfile.lifetime_treats > remoteProfile.lifetime_treats
+              || cachedProfile.rebirths > remoteProfile.rebirths)
+          ) {
+            setProfile(cachedProfile);
+          } else {
+            setProfile(remoteProfile);
+          }
+        } else {
+          setProfile(remoteProfile);
+        }
+      }
       setLoading(false);
       await loadLeaderboard();
     }
@@ -489,20 +538,22 @@ export default function ClickerGame() {
 
   const saveProfile = useCallback(
     async (nextProfile: GameProfile, quiet = true) => {
+      window.localStorage.setItem(demoKey, JSON.stringify(nextProfile));
       if (!supabase) {
-        window.localStorage.setItem(demoKey, JSON.stringify(nextProfile));
         return;
       }
 
       setSaving(true);
-      const { error } = await supabase.from("profiles").upsert({
-        ...nextProfile,
-        updated_at: new Date().toISOString(),
-      });
+      const { error } = await supabase.from("profiles").upsert(profileSavePayload(nextProfile));
       setSaving(false);
       if (error) {
-        setMessage("La sauvegarde Supabase a refuse la mise a jour.");
-        playTone("error");
+        const legacy = await supabase.from("profiles").upsert(legacyProfileSavePayload(nextProfile));
+        if (legacy.error) {
+          setMessage(`Sauvegarde locale ok, Supabase refuse: ${legacy.error.message}`);
+          playTone("error");
+          return;
+        }
+        setMessage("Sauvegarde locale ok. Reexecute supabase/schema.sql pour sauvegarder rebirths et niveaux.");
         return;
       }
       if (!quiet) {
@@ -1169,34 +1220,6 @@ export default function ClickerGame() {
         </aside>
       </div>
     </main>
-  );
-}
-
-function Panel({ children }: { children: React.ReactNode }) {
-  return (
-    <section className="glass-panel rounded-[30px] p-4">
-      {children}
-    </section>
-  );
-}
-
-function StatRow({
-  icon: Icon,
-  label,
-  value,
-}: {
-  icon: typeof PawPrint;
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className="soft-card flex items-center justify-between gap-3 rounded-2xl px-3 py-3 font-black">
-      <span className="flex min-w-0 items-center gap-2 text-sm text-white/64">
-        <Icon className="h-4 w-4 shrink-0" />
-        <span className="truncate">{label}</span>
-      </span>
-      <span className="text-white">{value}</span>
-    </div>
   );
 }
 
