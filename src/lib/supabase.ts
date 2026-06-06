@@ -17,8 +17,11 @@ export type GameProfile = {
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const looksLikeSupabaseUrl =
+  supabaseUrl?.includes(".supabase.co") || supabaseUrl?.includes(".supabase.com");
 
-export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
+export const isSupabaseMisconfigured = Boolean(supabaseUrl && !looksLikeSupabaseUrl);
+export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey && looksLikeSupabaseUrl);
 
 export const supabase = isSupabaseConfigured
   ? createClient(supabaseUrl!, supabaseAnonKey!, {
